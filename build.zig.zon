@@ -1,0 +1,12 @@
+.{
+    .name = .tui_lib,
+    .version = "0.0.1",
+    .fingerprint = 0x8fa65f226952ad08,
+    .minimum_zig_version = "0.15.2",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
