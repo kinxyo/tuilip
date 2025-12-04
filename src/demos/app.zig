@@ -1,5 +1,5 @@
 const std = @import("std");
-const tui = @import("tui_lib");
+const tui = @import("tuilip");
 
 const fmt = tui.fmt;
 const config = tui.config;

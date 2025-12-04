@@ -1,7 +1,7 @@
 .{
-    .name = .tui_lib,
+    .name = .tuilip,
     .version = "0.0.1",
-    .fingerprint = 0x8fa65f226952ad08,
+    .fingerprint = 0xf39aaad4907f32eb,
     .minimum_zig_version = "0.15.2",
     .dependencies = .{},
     .paths = .{
