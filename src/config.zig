@@ -1,11 +1,13 @@
-const std = @import("std");
 // ========== Config ==========
+
+const std = @import("std");
 
 var original: std.posix.termios = undefined;
 
 fn getSize(handle: std.fs.File.Handle) !std.posix.winsize {
     var s: std.posix.winsize = undefined;
     const result = std.posix.system.ioctl(handle, std.posix.T.IOCGWINSZ, @intFromPtr(&s));
+    // TODO: HOW DO I EVEN HANDLE ERROR HERE GRACEFULLY SINCE I DON'T KNOW ALL ERROR CODES BEING RETURNED?
     if (result != 0) return error.IoctlFailed else return s;
 }
 
