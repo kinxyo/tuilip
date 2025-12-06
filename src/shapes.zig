@@ -1,115 +1,115 @@
 const std = @import("std");
-const fmt = @import("fmt.zig");
 const t = @import("types.zig");
-const cv = @import("canvas.zig");
+const Canvas = @import("canvas.zig").Canvas;
 
-pub const Shapes = struct {
-    cv: *const cv.Canvas,
-
-    pub fn drawTextFrom(self: *const Shapes, origin: Point, str: []const u8) !void {
-        for (str, 0..) |char, idx| {
-            try self.cv.drawPoint(origin.x + idx, origin.y, char);
-        }
+/// Starts drawing text from the point of origin.
+pub fn drawTextFrom(cv: *const Canvas, origin: Point, str: []const u8) !void {
+    for (str, 0..) |char, idx| {
+        const tmp: u16 = @intCast(idx);
+        try cv.drawPoint(origin.x + tmp, origin.y, char);
     }
+}
 
-    pub fn clearTextFrom(self: *const Shapes, origin: Point, str: []const u8) !void {
-        for (0..str.len) |idx| {
-            try self.cv.clearPoint(origin.x + idx, origin.y);
-        }
+/// clear text drawn from `drawTextFrom` from the screen.
+pub fn clearTextFrom(cv: *const Canvas, origin: Point, str: []const u8) !void {
+    for (0..str.len) |idx| {
+        const tmp: u16 = @intCast(idx);
+        try cv.clearPoint(origin.x + tmp, origin.y);
     }
+}
 
-    pub fn drawTextAt(self: *const Shapes, origin: Point, str: []const u8) !void {
-        for (str, 0..) |char, idx| {
-            try self.cv.drawPoint(origin.x - str.len + 1 + idx, origin.y, char);
-        }
+/// Drawned text is aligned center at point of origin.
+pub fn drawTextAt(cv: *const Canvas, origin: Point, str: []const u8) !void {
+    for (str, 0..) |char, idx| {
+        const tmp: u16 = @intCast(idx);
+        try cv.drawPoint(origin.x - str.len + 1 + tmp, origin.y, char);
     }
+}
 
-    pub fn clearTextAt(self: *const Shapes, origin: Point, str: []const u8) !void {
-        for (0..str.len) |idx| {
-            try self.cv.clearPoint(origin.x - str.len + 1 + idx, origin.y);
-        }
+/// clear text drawn from `drawTextAt` from the screen.
+pub fn clearTextAt(cv: *const Canvas, origin: Point, str: []const u8) !void {
+    for (0..str.len) |idx| {
+        const tmp: u16 = @intCast(idx);
+        try cv.clearPoint(origin.x - str.len + 1 + tmp, origin.y);
     }
+}
 
-    pub fn drawCorner(self: *const Shapes, p: Point, c: Box) !void {
-        try self.cv.drawPoint(p.x, p.y, c.render());
+pub fn drawCorner(cv: *const Canvas, p: Point, c: Box) !void {
+    try cv.drawPoint(p.x, p.y, c.render());
+}
+
+pub fn clearCorner(cv: *const Canvas, p: Point) !void {
+    try cv.clearPoint(p.x, p.y);
+}
+
+pub fn drawLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+    for (origin.x..(origin.x + length)) |idx| {
+        try cv.drawPoint(idx, origin.y, Box.SideHzn.render());
     }
+}
 
-    pub fn clearCorner(self: *const Shapes, p: Point) !void {
-        try self.cv.clearPoint(p.x, p.y);
+pub fn clearLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+    for (origin.x..(origin.x + length)) |idx| {
+        try cv.clearPoint(idx, origin.y);
     }
+}
 
-    pub fn drawLineHzn(self: *const Shapes, origin: Point, length: t.Unit) !void {
-        for (origin.x..(origin.x + length)) |idx| {
-            try self.cv.drawPoint(idx, origin.y, Box.SideHzn.render());
-        }
+pub fn drawLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+    for (origin.y..(origin.y + length)) |idx| {
+        try cv.drawPoint(origin.x, idx, Box.SideVtl.render());
     }
+}
 
-    pub fn clearLineHzn(self: *const Shapes, origin: Point, length: t.Unit) !void {
-        for (origin.x..(origin.x + length)) |idx| {
-            try self.cv.clearPoint(idx, origin.y);
-        }
+pub fn clearLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+    for (origin.y..(origin.y + length)) |idx| {
+        try cv.clearPoint(origin.x, idx);
     }
+}
 
-    pub fn drawLineVtl(self: *const Shapes, origin: Point, length: t.Unit) !void {
-        for (origin.y..(origin.y + length)) |idx| {
-            try self.cv.drawPoint(origin.x, idx, Box.SideVtl.render());
-        }
-    }
+pub fn drawRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
+    // roof
+    try drawLineHzn(cv, .{ .x = origin.x, .y = origin.y }, breadth);
+    // left side
+    try drawLineVtl(cv, .{ .x = origin.x + breadth, .y = origin.y }, length);
+    // right side
+    try drawLineVtl(cv, .{ .x = origin.x, .y = origin.y }, length);
+    // base
+    try drawLineHzn(cv, .{ .x = origin.x, .y = origin.y + length }, breadth);
 
-    pub fn clearLineVtl(self: *const Shapes, origin: Point, length: t.Unit) !void {
-        for (origin.y..(origin.y + length)) |idx| {
-            try self.cv.clearPoint(origin.x, idx);
-        }
-    }
+    try drawCorner(cv, .{ .x = origin.x, .y = origin.y }, .TopLeft);
+    try drawCorner(cv, .{ .x = origin.x + breadth, .y = origin.y }, .TopRight);
+    try drawCorner(cv, .{ .x = origin.x, .y = origin.y + length }, .BottomLeft);
+    try drawCorner(cv, .{ .x = origin.x + breadth, .y = origin.y + length }, .BottomRight);
+}
 
-    pub fn drawRect(self: *const Shapes, origin: Point, length: t.Unit, breadth: t.Unit) !void {
-        // roof
-        try self.drawLineHzn(.{ .x = origin.x, .y = origin.y }, breadth);
-        // left side
-        try self.drawLineVtl(.{ .x = origin.x + breadth, .y = origin.y }, length);
-        // right side
-        try self.drawLineVtl(.{ .x = origin.x, .y = origin.y }, length);
-        // base
-        try self.drawLineHzn(.{ .x = origin.x, .y = origin.y + length }, breadth);
+pub fn clearRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
+    try clearLineHzn(cv, .{ .x = origin.x, .y = origin.y }, breadth);
+    try clearLineVtl(cv, .{ .x = origin.x + breadth, .y = origin.y }, length);
+    try clearLineHzn(cv, .{ .x = origin.x, .y = origin.y + length }, breadth);
 
-        try self.drawCorner(.{ .x = origin.x, .y = origin.y }, .TopLeft);
-        try self.drawCorner(.{ .x = origin.x + breadth, .y = origin.y }, .TopRight);
-        try self.drawCorner(.{ .x = origin.x, .y = origin.y + length }, .BottomLeft);
-        try self.drawCorner(.{ .x = origin.x + breadth, .y = origin.y + length }, .BottomRight);
-    }
+    try clearCorner(cv, .{ .x = origin.x, .y = origin.y });
+    try clearCorner(cv, .{ .x = origin.x + breadth, .y = origin.y });
+    try clearCorner(cv, .{ .x = origin.x, .y = origin.y + length });
+    try clearCorner(cv, .{ .x = origin.x + breadth, .y = origin.y + length });
+}
 
-    pub fn clearRect(self: *const Shapes, origin: Point, length: t.Unit, breadth: t.Unit) !void {
-        // roof
-        try self.clearLineHzn(.{ .x = origin.x, .y = origin.y }, breadth);
-        // left side
-        try self.clearLineVtl(.{ .x = origin.x + breadth, .y = origin.y }, length);
-        // right side
-        try self.clearLineVtl(.{ .x = origin.x, .y = origin.y }, length);
-        // base
-        try self.clearLineHzn(.{ .x = origin.x, .y = origin.y + length }, breadth);
+pub fn drawSquare(cv: *const Canvas, origin: Point, side: t.Unit) !void {
+    // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
+    try drawRect(cv, origin, side, side * 2);
+}
 
-        try self.clearCorner(.{ .x = origin.x, .y = origin.y });
-        try self.clearCorner(.{ .x = origin.x + breadth, .y = origin.y });
-        try self.clearCorner(.{ .x = origin.x, .y = origin.y + length });
-        try self.clearCorner(.{ .x = origin.x + breadth, .y = origin.y + length });
-    }
-
-    pub fn drawSquare(self: *const Shapes, origin: Point, side: t.Unit) !void {
-        // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
-        try self.drawRect(origin, side, side * 2);
-    }
-
-    pub fn clearSquare(self: *const Shapes, origin: Point, side: t.Unit) !void {
-        // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
-        try self.clearRect(origin, side, side * 2);
-    }
-};
+pub fn clearSquare(cv: *const Canvas, origin: Point, side: t.Unit) !void {
+    // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
+    try clearRect(cv, origin, side, side * 2);
+}
 
 pub const Point = struct {
     x: t.Unit,
     y: t.Unit,
 };
 
+/// For creating shape of box
+/// ┌─┐│└┘
 pub const Box = enum {
     TopLeft,
     TopRight,
@@ -120,7 +120,6 @@ pub const Box = enum {
 
     pub fn render(self: Box) t.Unicode {
         return switch (self) {
-            // ┌─┐│└┘
             .TopLeft => '┌',
             .TopRight => '┐',
             .BottomLeft => '└',

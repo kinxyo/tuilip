@@ -1,62 +1,38 @@
 const std = @import("std");
 
-const SIZE = 1024 * 4; // 10KB
+pub const Fmt = struct {
+    handle: std.fs.File.Handle,
+    reader: *std.Io.Reader,
+    writer: *std.Io.Writer,
 
-var buf_r: [SIZE]u8 = undefined;
-var buf_w: [SIZE]u8 = undefined;
-var buf_e: [1024]u8 = undefined;
+    /// Drains all remaining buffered data to stdout.
+    pub fn flush(self: *Fmt) void {
+        self.writer.flush() catch {};
+    }
 
-var reader = std.fs.File.stdin().reader(&buf_r);
-var writer = std.fs.File.stdout().writer(&buf_w);
-var err_writer = std.fs.File.stderr().writer(&buf_e);
+    /// writer to buffer with format
+    pub fn printf(self: *Fmt, comptime fmt: []const u8, args: anytype) void {
+        self.writer.print(fmt, args) catch {};
+    }
 
-var stdin: *std.Io.Reader = &reader.interface;
-var stdout: *std.Io.Writer = &writer.interface;
-var stderr: *std.Io.Writer = &err_writer.interface;
+    /// writer to buffer directly
+    pub fn print(self: *Fmt, bytes: []const u8) void {
+        self.writer.writeAll(bytes) catch {};
+    }
 
-pub fn getHandle() std.fs.File.Handle {
-    return reader.file.handle;
-}
+    /// hide the cursor
+    pub fn cursor_hide(self: *Fmt) void {
+        self.print("\x1b[?25l");
+    }
 
-pub fn clear() void {
-    stdout.writeAll("\x1b[2J\x1b[H") catch unreachable;
-}
+    /// show the cursor
+    pub fn cursor_show(self: *Fmt) void {
+        self.print("\x1b[?25h");
+        self.flush();
+    }
 
-pub fn getStdIn() *std.Io.Reader {
-    return stdin;
-}
-
-pub fn getStdOut() *std.Io.Writer {
-    return stdout;
-}
-
-pub fn flush() void {
-    stdout.flush() catch unreachable;
-}
-
-pub fn printf(comptime fmt: []const u8, args: anytype) void {
-    stdout.print(fmt, args) catch unreachable;
-}
-
-pub fn print(bytes: []const u8) void {
-    stdout.writeAll(bytes) catch unreachable;
-}
-
-pub fn cursor_hide() void {
-    print("\x1b[2J\x1b[H"); // clear screen and reset cursor pos
-    print("\x1b[?25l"); // hide the cursor
-}
-
-pub fn cursor_show() void {
-    print("\x1b[?25h");
-    print("\x1b[2J\x1b[H");
-    flush();
-}
-
-pub fn err(comptime fmt: []const u8, args: anytype) void {
-    stderr.writeAll("\x1b[31m") catch {};
-    stderr.print(fmt, args) catch {};
-    stderr.writeAll("\x1b[0m") catch {};
-    stderr.flush() catch {};
-    std.process.exit(1);
-}
+    /// clear screen and reset cursor pos
+    pub fn clear(self: *Fmt) void {
+        self.print("\x1b[2J\x1b[H");
+    }
+};
