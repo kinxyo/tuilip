@@ -3,47 +3,40 @@ const t = @import("types.zig");
 const shapes = @import("shapes.zig");
 const Canvas = @import("canvas.zig").Canvas;
 const helpers = @import("helpers.zig");
-
-pub const Direction = enum {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
-};
-
-pub const Box = struct {
-    height: t.Unit = 1,
-    width: t.Unit = 1,
-    fill: bool = true,
-    direction: Direction = .RIGHT,
-    zindex: usize = 1,
-};
+const b = @import("box.zig");
 
 pub const Layout = struct {
     cv: *const Canvas,
-    list: std.ArrayList(Box) = .empty,
+    list: std.ArrayList(b.Box) = .empty,
     allocator: std.mem.Allocator,
 
-    pub fn drawBox(self: *Layout, box: Box) !void {
+    pub fn drawBox(self: *Layout, box: b.Box) !void {
         try self.list.append(self.allocator, box);
     }
 
-    pub fn stackAll(self: *Layout, count: usize, orientation: helpers.Orientation) !void {
+    pub fn render(self: *Layout) !void {
+        _ = self;
+        // TODO: Draw a box on screen.
+    }
+
+    // ======= Random Fns ========
+
+    pub fn stackAll(cv: *const Canvas, count: usize, orientation: t.Orientation) !void {
         switch (orientation) {
             .HORIZONTAL => try helpers.autoBoxes(
-                self.cv,
+                cv,
                 count,
-                self.cv.width,
-                self.cv.height,
-                self.cv.margin,
+                cv.width,
+                cv.height,
+                cv.margin,
                 .HORIZONTAL,
             ),
             .VERTICAL => try helpers.autoBoxes(
-                self.cv,
+                cv,
                 count,
-                self.cv.height,
-                self.cv.width,
-                self.cv.margin,
+                cv.height,
+                cv.width,
+                cv.margin,
                 .VERTICAL,
             ),
         }

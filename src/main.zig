@@ -8,7 +8,7 @@ const demo3 = @import("demos/stackBoxes.zig");
 // main testing
 const app = @import("demos/app.zig");
 
-const CHOICE = 0;
+const CHOICE = 3;
 
 pub fn main() !void {
     if (CHOICE == 0) try app.main() else try run_demo(comptime CHOICE);

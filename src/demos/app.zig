@@ -43,9 +43,7 @@ pub fn main() !void {
 fn renderLoop(cv: *const Canvas, allocator: std.mem.Allocator) !void {
     var l: Layout = .{ .cv = cv, .allocator = allocator };
 
-    for (0..10) |_| {
-        try l.stackAll(3, .VERTICAL);
-        cv.fmt.flush();
-        std.Thread.sleep(std.time.ns_per_s);
-    }
+    try l.drawBox(.{ .height = 5, .width = 4, .fill = false, .direction = .RIGHT });
+
+    try l.render();
 }

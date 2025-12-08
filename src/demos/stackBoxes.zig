@@ -6,10 +6,6 @@ const shapes = tui.shapes;
 const Layout = tui.layout;
 
 pub fn main() !void {
-    var buffer_main: [1024 * 10]u8 = undefined;
-    var fba: std.heap.FixedBufferAllocator = .init(&buffer_main);
-    const allocator = fba.allocator();
-
     var buf_w: [4 * 1024]u8 = undefined;
     var writer = std.fs.File.stdout().writer(&buf_w);
     const stdout: *std.Io.Writer = &writer.interface;
@@ -37,14 +33,12 @@ pub fn main() !void {
     defer cv.fmt.cursor_show();
     defer cv.fmt.clear();
 
-    try renderLoop(&cv, allocator);
+    try renderLoop(&cv);
 }
 
-fn renderLoop(cv: *const Canvas, allocator: std.mem.Allocator) !void {
-    var l: Layout = .{ .cv = cv, .allocator = allocator };
-
+fn renderLoop(cv: *const Canvas) !void {
     for (0..10) |_| {
-        try l.stackAll(3, .VERTICAL);
+        try Layout.stackAll(cv, 3, .HORIZONTAL);
         cv.fmt.flush();
         std.Thread.sleep(std.time.ns_per_s);
     }

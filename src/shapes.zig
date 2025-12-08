@@ -34,7 +34,7 @@ pub fn clearTextAt(cv: *const Canvas, origin: Point, str: []const u8) !void {
     }
 }
 
-pub fn drawCorner(cv: *const Canvas, p: Point, c: Box) !void {
+pub fn drawCorner(cv: *const Canvas, p: Point, c: Side) !void {
     try cv.drawPoint(p.x, p.y, c.render());
 }
 
@@ -45,7 +45,7 @@ pub fn clearCorner(cv: *const Canvas, p: Point) !void {
 pub fn drawLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.x..(origin.x + length)) |idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(tmp, origin.y, Box.SideHzn.render());
+        try cv.drawPoint(tmp, origin.y, Side.SideHzn.render());
     }
 }
 
@@ -59,7 +59,7 @@ pub fn clearLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
 pub fn drawLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.y..(origin.y + length)) |idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(origin.x, tmp, Box.SideVtl.render());
+        try cv.drawPoint(origin.x, tmp, Side.SideVtl.render());
     }
 }
 
@@ -114,7 +114,7 @@ pub const Point = struct {
 
 /// For creating shape of box
 /// ┌─┐│└┘
-pub const Box = enum {
+pub const Side = enum {
     TopLeft,
     TopRight,
     BottomLeft,
@@ -122,7 +122,7 @@ pub const Box = enum {
     SideHzn,
     SideVtl,
 
-    pub fn render(self: Box) t.Unicode {
+    pub fn render(self: Side) t.Unicode {
         return switch (self) {
             .TopLeft => '┌',
             .TopRight => '┐',
