@@ -9,15 +9,27 @@ const shapes = tui.shapes;
 /// This is for testing the library apis work to produce intended TUI,
 /// and also help as an example for how to do things.
 pub fn main() !void {
-    const hn = fmt.getHandle();
+    var buf_w: [4 * 1024]u8 = undefined;
+    var writer = std.fs.File.stdout().writer(&buf_w);
+    const stdout: *std.Io.Writer = &writer.interface;
 
-    const cv: Canvas = try .init(hn);
+    var buf_r: [4 * 1024]u8 = undefined;
+    var reader = std.fs.File.stdin().reader(&buf_r);
+    const stdin: *std.Io.Reader = &reader.interface;
 
-    fmt.cursor_hide();
-    defer fmt.cursor_show();
+    var app_fmt: tui.Fmt = .{
+        .writer = stdout,
+        .reader = stdin,
+        .handle = reader.file.handle,
+    };
 
-    try config.enableRaw(hn);
-    defer config.disableRaw(hn);
+    var cv: Canvas = try .init(&app_fmt);
+
+    const os = try cv.enableRaw();
+    defer cv.disableRaw(os);
+
+    cv.fmt.cursor_hide();
+    defer cv.fmt.cursor_show();
 
     try renderLoop(&cv);
 }
@@ -37,11 +49,11 @@ fn renderLoop(cv: *const Canvas) !void {
     const TEXT = argIter.next() orelse "-->";
 
     while (true) {
-        fmt.print("\x1b[34m");
+        cv.fmt.print("\x1b[34m");
         try shapes.drawTextFrom(cv, .{ .x = x, .y = y }, TEXT);
-        fmt.print("\x1b[0m");
+        cv.fmt.print("\x1b[0m");
 
-        fmt.flush();
+        cv.fmt.flush();
 
         std.Thread.sleep(20 * std.time.ns_per_ms);
 

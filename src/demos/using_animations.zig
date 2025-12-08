@@ -1,15 +1,11 @@
 const std = @import("std");
 const tui = @import("tuilip");
+
 const fmt = tui.fmt;
+const animations = tui.animations;
 const Canvas = tui.Canvas;
-const shapes = tui.shapes;
-const Layout = tui.layout;
 
 pub fn main() !void {
-    var buffer_main: [1024 * 10]u8 = undefined;
-    var fba: std.heap.FixedBufferAllocator = .init(&buffer_main);
-    const allocator = fba.allocator();
-
     var buf_w: [4 * 1024]u8 = undefined;
     var writer = std.fs.File.stdout().writer(&buf_w);
     const stdout: *std.Io.Writer = &writer.interface;
@@ -24,7 +20,7 @@ pub fn main() !void {
         .handle = reader.file.handle,
     };
 
-    const cv = Canvas.init(&app_fmt) catch |err| {
+    var cv = Canvas.init(&app_fmt) catch |err| {
         std.log.err("Failed to initialize canvas: {s}\n", .{@errorName(err)});
         return;
     };
@@ -35,17 +31,11 @@ pub fn main() !void {
     cv.fmt.clear();
     cv.fmt.cursor_hide();
     defer cv.fmt.cursor_show();
-    defer cv.fmt.clear();
 
-    try renderLoop(&cv, allocator);
-}
-
-fn renderLoop(cv: *const Canvas, allocator: std.mem.Allocator) !void {
-    var l: Layout = .{ .cv = cv, .allocator = allocator };
-
-    for (0..10) |_| {
-        try l.stackAll(3, .VERTICAL);
-        cv.fmt.flush();
-        std.Thread.sleep(std.time.ns_per_s);
+    for (0..5) |_| {
+        try animations.slidingX(&cv, 1, 5, cv.width, 2, "===", 31);
+        try animations.slidingY(&cv, 5, 1, cv.height, 2, "|||", 34);
     }
+
+    cv.fmt.clear();
 }

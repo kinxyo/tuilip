@@ -44,25 +44,29 @@ pub fn clearCorner(cv: *const Canvas, p: Point) !void {
 
 pub fn drawLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.x..(origin.x + length)) |idx| {
-        try cv.drawPoint(idx, origin.y, Box.SideHzn.render());
+        const tmp: u16 = @intCast(idx);
+        try cv.drawPoint(tmp, origin.y, Box.SideHzn.render());
     }
 }
 
 pub fn clearLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.x..(origin.x + length)) |idx| {
-        try cv.clearPoint(idx, origin.y);
+        const tmp: u16 = @intCast(idx);
+        try cv.clearPoint(tmp, origin.y);
     }
 }
 
 pub fn drawLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.y..(origin.y + length)) |idx| {
-        try cv.drawPoint(origin.x, idx, Box.SideVtl.render());
+        const tmp: u16 = @intCast(idx);
+        try cv.drawPoint(origin.x, tmp, Box.SideVtl.render());
     }
 }
 
 pub fn clearLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
     for (origin.y..(origin.y + length)) |idx| {
-        try cv.clearPoint(origin.x, idx);
+        const tmp: u16 = @intCast(idx);
+        try cv.clearPoint(origin.x, tmp);
     }
 }
 

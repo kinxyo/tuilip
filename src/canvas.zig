@@ -8,6 +8,7 @@ pub const Canvas = struct {
     height: t.Unit,
     width: t.Unit,
     fmt: *f.Fmt,
+    margin: t.Unit = 2,
 
     /// Returns an instance of canvas that allows operations on it.
     pub fn init(fmt: *f.Fmt) !Canvas {
@@ -22,6 +23,8 @@ pub const Canvas = struct {
         };
     }
 
+    // ======== Drawing ========
+
     /// Draw pixel on canvas at `x` (col) and `y` (row).
     pub fn drawPoint(self: *const Canvas, x: t.Unit, y: t.Unit, char: ?t.Unicode) !void {
         if (x >= self.width or y >= self.height) return error.ScreenLimitExceeded;
@@ -33,9 +36,11 @@ pub const Canvas = struct {
         try self.drawPoint(x, y, ' ');
     }
 
+    // ======== Config ========
+
     /// Disables (currently: ECHO, ICANON) flags for terminal,
     /// returns original instance for restoring original state at the end of program.
-    fn enableRaw(self: *const Canvas) !std.posix.termios {
+    pub fn enableRaw(self: *const Canvas) !std.posix.termios {
         const original = try std.posix.tcgetattr(self.fmt.handle);
 
         var raw = original;
@@ -46,7 +51,7 @@ pub const Canvas = struct {
         return original;
     }
 
-    fn disableRaw(self: *const Canvas, original: std.posix.termios) void {
+    pub fn disableRaw(self: *const Canvas, original: std.posix.termios) void {
         std.posix.tcsetattr(self.fmt.handle, .FLUSH, original) catch {};
     }
 };
