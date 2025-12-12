@@ -6,6 +6,10 @@ const animations = tui.animations;
 const Canvas = tui.Canvas;
 
 pub fn main() !void {
+    var buffer_alloc: [1024 * 60]u8 = undefined;
+    var fba: std.heap.FixedBufferAllocator = .init(&buffer_alloc);
+    const allocator = fba.allocator();
+
     var buf_w: [4 * 1024]u8 = undefined;
     var writer = std.fs.File.stdout().writer(&buf_w);
     const stdout: *std.Io.Writer = &writer.interface;
@@ -20,10 +24,8 @@ pub fn main() !void {
         .handle = reader.file.handle,
     };
 
-    var cv = Canvas.init(&app_fmt) catch |err| {
-        std.log.err("Failed to initialize canvas: {s}\n", .{@errorName(err)});
-        return;
-    };
+    var cv: Canvas = .init(&app_fmt, allocator, 0);
+    defer cv.deinit(allocator);
 
     const original_state = try cv.enableRaw();
     defer cv.disableRaw(original_state);
@@ -33,8 +35,8 @@ pub fn main() !void {
     defer cv.fmt.cursor_show();
 
     for (0..5) |_| {
-        try animations.slidingX(&cv, 1, 5, cv.width, 2, "===", 31);
-        try animations.slidingY(&cv, 5, 1, cv.height, 2, "|||", 34);
+        try animations.slidingX(&cv, 1, 5, cv.getCol(), 2, "===", 31);
+        try animations.slidingY(&cv, 5, 1, cv.getRow(), 2, "|||", 34);
     }
 
     cv.fmt.clear();

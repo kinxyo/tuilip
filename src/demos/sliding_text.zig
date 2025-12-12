@@ -9,6 +9,10 @@ const shapes = tui.shapes;
 /// This is for testing the library apis work to produce intended TUI,
 /// and also help as an example for how to do things.
 pub fn main() !void {
+    var buffer_alloc: [1024 * 60]u8 = undefined;
+    var fba: std.heap.FixedBufferAllocator = .init(&buffer_alloc);
+    const allocator = fba.allocator();
+
     var buf_w: [4 * 1024]u8 = undefined;
     var writer = std.fs.File.stdout().writer(&buf_w);
     const stdout: *std.Io.Writer = &writer.interface;
@@ -23,7 +27,7 @@ pub fn main() !void {
         .handle = reader.file.handle,
     };
 
-    var cv: Canvas = try .init(&app_fmt);
+    var cv: Canvas = .init(&app_fmt, allocator, 0);
 
     const os = try cv.enableRaw();
     defer cv.disableRaw(os);
@@ -34,11 +38,9 @@ pub fn main() !void {
     try renderLoop(&cv);
 }
 
-fn renderLoop(cv: *const Canvas) !void {
-    // var stdin = fmt.getStdIn();
-
+fn renderLoop(cv: *Canvas) !void {
     var x: tui.types.Unit = 1;
-    const y: tui.types.Unit = cv.height / 2;
+    const y: tui.types.Unit = cv.getRow() / 2;
 
     var iter: usize = 0;
 
@@ -53,14 +55,14 @@ fn renderLoop(cv: *const Canvas) !void {
         try shapes.drawTextFrom(cv, .{ .x = x, .y = y }, TEXT);
         cv.fmt.print("\x1b[0m");
 
-        cv.fmt.flush();
+        cv.render();
 
         std.Thread.sleep(20 * std.time.ns_per_ms);
 
         try shapes.clearTextFrom(cv, .{ .x = x, .y = y }, TEXT);
         x += 1;
 
-        if (x + TEXT.len >= cv.width) {
+        if (x + TEXT.len >= cv.getCol()) {
             iter += 1;
             x = 1;
         }

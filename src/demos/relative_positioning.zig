@@ -6,8 +6,8 @@ const shapes = tui.shapes;
 const Layout = tui.Layout;
 
 pub fn main() !void {
-    var buffer_alloc: [1024 * 60]u8 = undefined;
-    var fba: std.heap.FixedBufferAllocator = .init(&buffer_alloc);
+    var buffer_main: [1024 * 10]u8 = undefined;
+    var fba: std.heap.FixedBufferAllocator = .init(&buffer_main);
     const allocator = fba.allocator();
 
     var buf_w: [4 * 1024]u8 = undefined;
@@ -24,8 +24,10 @@ pub fn main() !void {
         .handle = reader.file.handle,
     };
 
-    var cv: Canvas = .init(&app_fmt, allocator, 0);
-    defer cv.deinit(allocator);
+    const cv = Canvas.init(&app_fmt) catch |err| {
+        std.log.err("Failed to initialize canvas: {s}\n", .{@errorName(err)});
+        return;
+    };
 
     const original_state = try cv.enableRaw();
     defer cv.disableRaw(original_state);
@@ -33,15 +35,14 @@ pub fn main() !void {
     cv.fmt.clear();
     cv.fmt.cursor_hide();
     defer cv.fmt.cursor_show();
-    defer cv.fmt.clear();
 
-    try renderLoop(&cv);
+    try renderLoop(&cv, allocator);
 }
 
-fn renderLoop(cv: *Canvas) !void {
-    for (0..10) |_| {
-        try Layout.stackAll(cv, 3, .HORIZONTAL);
-        cv.render();
-        std.Thread.sleep(std.time.ns_per_s);
-    }
+fn renderLoop(cv: *const Canvas, allocator: std.mem.Allocator) !void {
+    var l: Layout = .{ .cv = cv, .allocator = allocator };
+
+    try l.drawBox(.{ .length = 20, .breadth = 30, .fill = false, .position = .{ .top = 20, .left = 50 } });
+
+    try l.render();
 }

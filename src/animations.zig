@@ -5,7 +5,7 @@ const shapes = @import("shapes.zig");
 
 /// Horizontal transition of string on canvas.
 /// Example: `try animations.slidingX(&cv, 1, 5, cv.width, 2, "===", 31);`
-pub fn slidingX(cv: *const Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: usize, str: []const u8, color: ?usize) !void {
+pub fn slidingX(cv: *Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: usize, str: []const u8, color: ?usize) !void {
     var pos: t.Unit = x;
 
     while (pos < limit) {
@@ -15,7 +15,7 @@ pub fn slidingX(cv: *const Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: u
         if (color) |_| cv.fmt.printf("\x1b[0m", .{});
 
         // render
-        cv.fmt.flush();
+        cv.render();
 
         // post-render drawing
         try shapes.clearTextFrom(cv, .{ .x = pos, .y = y }, str);
@@ -29,7 +29,7 @@ pub fn slidingX(cv: *const Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: u
 
 /// Vertical transition of string on canvas.
 /// Example: `try animations.slidingY(&cv, 5, 1, cv.height, 2, "|||", 34);`
-pub fn slidingY(cv: *const Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: usize, str: []const u8, color: ?usize) !void {
+pub fn slidingY(cv: *Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: usize, str: []const u8, color: ?usize) !void {
     var pos: t.Unit = y;
 
     while (pos < limit) {
@@ -39,7 +39,7 @@ pub fn slidingY(cv: *const Canvas, x: t.Unit, y: t.Unit, limit: t.Unit, speed: u
         if (color) |_| cv.fmt.printf("\x1b[0m", .{});
 
         // render
-        cv.fmt.flush();
+        cv.render();
 
         // post-render drawing
         try shapes.clearTextFrom(cv, .{ .x = x, .y = pos }, str);

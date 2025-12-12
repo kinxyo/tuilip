@@ -3,74 +3,70 @@ const t = @import("types.zig");
 const Canvas = @import("canvas.zig").Canvas;
 
 /// Starts drawing text from the point of origin.
-pub fn drawTextFrom(cv: *const Canvas, origin: Point, str: []const u8) !void {
+pub fn drawTextFrom(cv: *Canvas, origin: Point, str: []const u8) !void {
     for (str, 0..) |char, idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(origin.x + tmp, origin.y, char);
+        try cv.draw(origin.x + tmp, origin.y, char);
     }
 }
 
 /// clear text drawn from `drawTextFrom` from the screen.
-pub fn clearTextFrom(cv: *const Canvas, origin: Point, str: []const u8) !void {
+pub fn clearTextFrom(cv: *Canvas, origin: Point, str: []const u8) !void {
     for (0..str.len) |idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.clearPoint(origin.x + tmp, origin.y);
+        try cv.clear(origin.x + tmp, origin.y);
     }
 }
 
 /// Drawned text is aligned center at point of origin.
-pub fn drawTextAt(cv: *const Canvas, origin: Point, str: []const u8) !void {
+pub fn drawTextAt(cv: *Canvas, origin: Point, str: []const u8) !void {
     for (str, 0..) |char, idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(origin.x - str.len + 1 + tmp, origin.y, char);
+        try cv.draw(origin.x - str.len + 1 + tmp, origin.y, char);
     }
 }
 
 /// clear text drawn from `drawTextAt` from the screen.
-pub fn clearTextAt(cv: *const Canvas, origin: Point, str: []const u8) !void {
+pub fn clearTextAt(cv: *Canvas, origin: Point, str: []const u8) !void {
     for (0..str.len) |idx| {
         const tmp: u16 = @intCast(idx);
-        try cv.clearPoint(origin.x - str.len + 1 + tmp, origin.y);
+        try cv.clear(origin.x - str.len + 1 + tmp, origin.y);
     }
 }
 
-pub fn drawCorner(cv: *const Canvas, p: Point, c: Side) !void {
-    try cv.drawPoint(p.x, p.y, c.render());
+pub fn drawCorner(cv: *Canvas, p: Point, c: Side) !void {
+    try cv.draw(p.x, p.y, c.toChar());
 }
 
-pub fn clearCorner(cv: *const Canvas, p: Point) !void {
-    try cv.clearPoint(p.x, p.y);
+pub fn clearCorner(cv: *Canvas, p: Point) !void {
+    try cv.clear(p.x, p.y);
 }
 
-pub fn drawLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+pub fn drawLineHzn(cv: *Canvas, origin: Point, length: t.Unit) !void {
     for (origin.x..(origin.x + length)) |idx| {
-        const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(tmp, origin.y, Side.SideHzn.render());
+        try cv.draw(idx, origin.y, Side.SideHzn.toChar());
     }
 }
 
-pub fn clearLineHzn(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+pub fn clearLineHzn(cv: *Canvas, origin: Point, length: t.Unit) !void {
     for (origin.x..(origin.x + length)) |idx| {
-        const tmp: u16 = @intCast(idx);
-        try cv.clearPoint(tmp, origin.y);
+        try cv.clear(idx, origin.y);
     }
 }
 
-pub fn drawLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+pub fn drawLineVtl(cv: *Canvas, origin: Point, length: t.Unit) !void {
     for (origin.y..(origin.y + length)) |idx| {
-        const tmp: u16 = @intCast(idx);
-        try cv.drawPoint(origin.x, tmp, Side.SideVtl.render());
+        try cv.draw(origin.x, idx, Side.SideVtl.toChar());
     }
 }
 
-pub fn clearLineVtl(cv: *const Canvas, origin: Point, length: t.Unit) !void {
+pub fn clearLineVtl(cv: *Canvas, origin: Point, length: t.Unit) !void {
     for (origin.y..(origin.y + length)) |idx| {
-        const tmp: u16 = @intCast(idx);
-        try cv.clearPoint(origin.x, tmp);
+        try cv.clear(origin.x, idx);
     }
 }
 
-pub fn drawRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
+pub fn drawRect(cv: *Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
     // roof
     try drawLineHzn(cv, .{ .x = origin.x, .y = origin.y }, breadth);
     // left side
@@ -86,7 +82,7 @@ pub fn drawRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Uni
     try drawCorner(cv, .{ .x = origin.x + breadth, .y = origin.y + length }, .BottomRight);
 }
 
-pub fn clearRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
+pub fn clearRect(cv: *Canvas, origin: Point, length: t.Unit, breadth: t.Unit) !void {
     try clearLineHzn(cv, .{ .x = origin.x, .y = origin.y }, breadth);
     try clearLineVtl(cv, .{ .x = origin.x + breadth, .y = origin.y }, length);
     try clearLineHzn(cv, .{ .x = origin.x, .y = origin.y + length }, breadth);
@@ -97,12 +93,12 @@ pub fn clearRect(cv: *const Canvas, origin: Point, length: t.Unit, breadth: t.Un
     try clearCorner(cv, .{ .x = origin.x + breadth, .y = origin.y + length });
 }
 
-pub fn drawSquare(cv: *const Canvas, origin: Point, side: t.Unit) !void {
+pub fn drawSquare(cv: *Canvas, origin: Point, side: t.Unit) !void {
     // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
     try drawRect(cv, origin, side, side * 2);
 }
 
-pub fn clearSquare(cv: *const Canvas, origin: Point, side: t.Unit) !void {
+pub fn clearSquare(cv: *Canvas, origin: Point, side: t.Unit) !void {
     // Terminal characters are typically twice as tall as they are wide (roughly 8x16 pixels, or similar ratio).
     try clearRect(cv, origin, side, side * 2);
 }
@@ -122,7 +118,7 @@ pub const Side = enum {
     SideHzn,
     SideVtl,
 
-    pub fn render(self: Side) t.Unicode {
+    pub fn toChar(self: Side) t.Unicode {
         return switch (self) {
             .TopLeft => '┌',
             .TopRight => '┐',

@@ -3,7 +3,7 @@ const t = @import("types.zig");
 const shapes = @import("shapes.zig");
 const Canvas = @import("canvas.zig").Canvas;
 
-pub fn autoBoxes(cv: *const Canvas, count: usize, grow_point: t.Unit, static_point: t.Unit, margin: t.Unit, orientation: t.Orientation) !void {
+pub fn autoBoxes(cv: *Canvas, count: usize, grow_point: t.Unit, static_point: t.Unit, margin: t.Unit, orientation: t.Orientation) !void {
     if (count <= 0) return;
     if (count == 1) {
         return switch (orientation) {
@@ -47,7 +47,7 @@ pub fn autoBoxes(cv: *const Canvas, count: usize, grow_point: t.Unit, static_poi
     }
 }
 
-fn drawBoxDirect(cv: *const Canvas, full_height: t.Unit, full_width: t.Unit, margin: t.Unit) !void {
+fn drawBoxDirect(cv: *Canvas, full_height: t.Unit, full_width: t.Unit, margin: t.Unit) !void {
     try shapes.drawRect(
         cv,
         .{

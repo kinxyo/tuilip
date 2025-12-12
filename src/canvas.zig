@@ -1,42 +1,138 @@
 const std = @import("std");
-const f = @import("fmt.zig");
 const t = @import("types.zig");
+const f = @import("fmt.zig");
 
-// Represents the main canvas responsible for all drawing operations.
-// The measurement is in grid row/col.
+pub const CanvasError = error{
+    RowOutOfBounds,
+    ColOutOfBounds,
+};
+pub const Cell = struct {
+    bg: t.BG = .default,
+    fg: t.FG = .default,
+    char: t.Unicode = ' ',
+};
+
 pub const Canvas = struct {
-    height: t.Unit,
-    width: t.Unit,
     fmt: *f.Fmt,
-    margin: t.Unit = 2,
+    rows: t.Unit,
+    cols: t.Unit,
+    back_buffer: []Cell,
+    front_buffer: []Cell,
+    margin: t.Unit,
 
-    /// Returns an instance of canvas that allows operations on it.
-    pub fn init(fmt: *f.Fmt) !Canvas {
-        var term_size: std.posix.winsize = undefined;
-        const ret = std.posix.system.ioctl(fmt.handle, std.posix.T.IOCGWINSZ, @intFromPtr(&term_size));
-        if (ret != 0) return std.posix.unexpectedErrno(std.posix.errno(ret));
-
-        return .{
-            .height = term_size.row,
-            .width = term_size.col,
-            .fmt = fmt,
-        };
+    /// Draw directly on canvas by passing buffers and other configurations.
+    pub fn directDraw(self: *const Canvas, x: usize, y: usize, comptime char: t.Unicode) void {
+        self.fmt.printf("\x1b[{d};{d}H{u}", .{ y + 1, x + 1, char });
     }
 
-    // ======== Drawing ========
+    /// Draw a pixel on specified coordinates on canvas by updating back buffer.
+    pub fn draw(self: *const Canvas, col: usize, row: usize, char: t.Unicode) CanvasError!void {
+        if (col >= self.cols) return error.ColOutOfBounds;
+        if (row >= self.rows) return error.RowOutOfBounds;
 
-    /// Draw pixel on canvas at `x` (col) and `y` (row).
-    pub fn drawPoint(self: *const Canvas, x: t.Unit, y: t.Unit, char: ?t.Unicode) !void {
-        if (x >= self.width or y >= self.height) return error.ScreenLimitExceeded;
-        self.fmt.printf("\x1b[{d};{d}H{u}", .{ y, x, char orelse '*' });
+        const index = row * self.cols + col;
+        self.back_buffer[index].char = char;
     }
 
-    /// Clear pixel on canvas at `x` (col) and `y` (row).
-    pub fn clearPoint(self: *const Canvas, x: t.Unit, y: t.Unit) !void {
-        try self.drawPoint(x, y, ' ');
+    /// Clear a pixel on specified coordinates by updating back buffer.
+    /// Will require `.flush()` to render on canvas.
+    pub fn clear(self: *Canvas, col: usize, row: usize) CanvasError!void {
+        if (col >= self.cols) return error.ColOutOfBounds;
+        if (row >= self.rows) return error.RowOutOfBounds;
+
+        const index = row * self.cols + col;
+        self.back_buffer[index].char = ' ';
+    }
+
+    /// Draw on canvas by updating back buffer along with Color & style configuration.
+    pub fn drawC(self: *Canvas, col: usize, row: usize, cell: Cell) CanvasError!void {
+        if (col >= self.cols) return error.ColOutOfBounds;
+        if (row >= self.rows) return error.RowOutOfBounds;
+
+        const index = row * self.cols + col;
+        self.back_buffer[index] = cell;
+    }
+
+    /// Flush back buffer & sync front buffer.
+    pub fn render(self: *Canvas) void {
+        for (self.front_buffer, self.back_buffer, 0..) |front, back, idx| {
+            if (!std.meta.eql(front, back)) {
+                const r = idx / self.cols;
+                const c = idx % self.cols;
+
+                if (back.bg.isSet()) {
+                    self.fmt.printf("\x1b[{d};{d}m", .{ back.fg, back.bg });
+                } else {
+                    self.fmt.printf("\x1b[{d}m", .{back.fg});
+                }
+
+                self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
+                self.fmt.print("\x1b[0m");
+            }
+        }
+
+        self.fmt.flush();
+        @memcpy(self.front_buffer, self.back_buffer); // why to copy the whole buffer? why not just move the changed points instead?
+    }
+
+    /// Only flush back buffer.
+    pub fn renderForce(self: *Canvas) void {
+        for (self.back_buffer, 0..) |back, idx| {
+            if (back.char != ' ') {
+                const r = idx / self.cols;
+                const c = idx % self.cols;
+
+                self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
+            }
+        }
+        self.fmt.flush();
+        @memcpy(self.front_buffer, self.back_buffer);
     }
 
     // ======== Config ========
+
+    /// Create a canvas instance that contains terminal size and allows draw operations.
+    /// Needs to pass a `fmt` instance for drawing and event polling.
+    pub fn init(fmt: *f.Fmt, allocator: std.mem.Allocator, margin: t.Unit) Canvas {
+        var size: std.posix.winsize = undefined;
+        const ret = std.posix.system.ioctl(fmt.handle, std.posix.T.IOCGWINSZ, @intFromPtr(&size));
+
+        // NOT HANDLING ERROR BUT CREATING ARBITRARY CANVAS
+        const term_r: t.Unit = if (ret != 0) 10 else size.row;
+        const term_c: t.Unit = if (ret != 0) 10 else size.col;
+
+        const total_cells: usize = term_r * term_c;
+
+        const bb = allocator.alloc(Cell, total_cells) catch {
+            const needed_size = total_cells * @sizeOf(Cell) * 2 + 2;
+            std.log.err("Out of memory: {d} is needed!\n", .{needed_size});
+            std.process.exit(1);
+        };
+        const fb = allocator.alloc(Cell, total_cells) catch {
+            const needed_size = total_cells * @sizeOf(Cell) * 2 + 2;
+            std.log.err("Out of memory: {d} is needed!\n", .{needed_size});
+            std.process.exit(1);
+        };
+
+        return .{
+            .fmt = fmt,
+            .rows = term_r,
+            .cols = term_c,
+            .back_buffer = bb,
+            .front_buffer = fb,
+            .margin = margin,
+        };
+    }
+
+    /// Use this function if you want Canvas height with margin consideration.
+    pub fn getRow(self: *const Canvas) t.Unit {
+        return self.rows - self.margin;
+    }
+
+    /// Use this function if you want Canvas width with margin consideration.
+    pub fn getCol(self: *const Canvas) t.Unit {
+        return self.cols - self.margin;
+    }
 
     /// Disables (currently: ECHO, ICANON) flags for terminal,
     /// returns original instance for restoring original state at the end of program.
@@ -53,5 +149,11 @@ pub const Canvas = struct {
 
     pub fn disableRaw(self: *const Canvas, original: std.posix.termios) void {
         std.posix.tcsetattr(self.fmt.handle, .FLUSH, original) catch {};
+    }
+
+    /// Destroy the allocated safe for graceful exit of program and prevent memory leaks.
+    pub fn deinit(self: *Canvas, allocator: std.mem.Allocator) void {
+        allocator.free(self.back_buffer);
+        allocator.free(self.front_buffer);
     }
 };
