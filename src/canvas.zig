@@ -6,19 +6,16 @@ pub const CanvasError = error{
     RowOutOfBounds,
     ColOutOfBounds,
 };
-pub const Cell = struct {
-    bg: t.BG = .default,
-    fg: t.FG = .default,
-    char: t.Unicode = ' ',
-};
 
 pub const Canvas = struct {
     fmt: *f.Fmt,
     rows: t.Unit,
     cols: t.Unit,
-    back_buffer: []Cell,
-    front_buffer: []Cell,
+    back_buffer: []t.Cell,
+    front_buffer: []t.Cell,
     margin: t.Unit,
+
+    // ======== Drawing (primitives) ========
 
     /// Draw directly on canvas by passing buffers and other configurations.
     pub fn directDraw(self: *const Canvas, x: usize, y: usize, comptime char: t.Unicode) void {
@@ -30,7 +27,7 @@ pub const Canvas = struct {
         if (col >= self.cols) return error.ColOutOfBounds;
         if (row >= self.rows) return error.RowOutOfBounds;
 
-        const index = row * self.cols + col;
+        const index = row * self.getCol() + col;
         self.back_buffer[index].char = char;
     }
 
@@ -45,7 +42,7 @@ pub const Canvas = struct {
     }
 
     /// Draw on canvas by updating back buffer along with Color & style configuration.
-    pub fn drawC(self: *Canvas, col: usize, row: usize, cell: Cell) CanvasError!void {
+    pub fn drawC(self: *Canvas, col: usize, row: usize, cell: t.Cell) CanvasError!void {
         if (col >= self.cols) return error.ColOutOfBounds;
         if (row >= self.rows) return error.RowOutOfBounds;
 
@@ -68,26 +65,47 @@ pub const Canvas = struct {
 
                 self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
                 self.fmt.print("\x1b[0m");
+
+                self.front_buffer[idx] = self.back_buffer[idx];
             }
         }
 
         self.fmt.flush();
-        @memcpy(self.front_buffer, self.back_buffer); // why to copy the whole buffer? why not just move the changed points instead?
     }
 
-    /// Only flush back buffer.
+    /// Flush back buffer without comparing with front buffer
+    /// And copy the whole back buffer to front buffer.
+    /// Less performant; only use when necessary.
     pub fn renderForce(self: *Canvas) void {
         for (self.back_buffer, 0..) |back, idx| {
-            if (back.char != ' ') {
-                const r = idx / self.cols;
-                const c = idx % self.cols;
+            const r = idx / self.cols;
+            const c = idx % self.cols;
 
-                self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
-            }
+            self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
         }
         self.fmt.flush();
         @memcpy(self.front_buffer, self.back_buffer);
     }
+
+    // ======== Drawing (advance) ========
+
+    /// Container (Equvialent to `Div` element from html).
+    pub fn div(self: *Canvas, point: ?t.Point, length: t.Unit, breadth: t.Unit) !void {
+        // TODO: get space (origin points).
+        const p: t.Point = point orelse .{ .row = 1, .col = 1 };
+        const box: t.Box = .{ .row = p.row, .col = p.col, .length = length, .breadth = breadth };
+        for (box.row..(box.row + box.length)) |y| {
+            for (box.col..(box.col + box.breadth)) |x| {
+                const is_border: bool = (y == box.row or y == (box.row + box.length - 1)) or (x == box.col or x == (box.col + box.breadth - 1));
+
+                if (is_border) {
+                    try self.draw(x, y, '.');
+                }
+            }
+        }
+    }
+
+    // pub fn flexBox(self: *Canvas, count: usize, ori: t.Orientation) !void {}
 
     // ======== Config ========
 
@@ -103,13 +121,13 @@ pub const Canvas = struct {
 
         const total_cells: usize = term_r * term_c;
 
-        const bb = allocator.alloc(Cell, total_cells) catch {
-            const needed_size = total_cells * @sizeOf(Cell) * 2 + 2;
+        const bb = allocator.alloc(t.Cell, total_cells) catch {
+            const needed_size = total_cells * @sizeOf(t.Cell) * 2 + 2;
             std.log.err("Out of memory: {d} is needed!\n", .{needed_size});
             std.process.exit(1);
         };
-        const fb = allocator.alloc(Cell, total_cells) catch {
-            const needed_size = total_cells * @sizeOf(Cell) * 2 + 2;
+        const fb = allocator.alloc(t.Cell, total_cells) catch {
+            const needed_size = total_cells * @sizeOf(t.Cell) * 2 + 2;
             std.log.err("Out of memory: {d} is needed!\n", .{needed_size});
             std.process.exit(1);
         };

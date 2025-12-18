@@ -2,6 +2,29 @@ const std = @import("std");
 const t = @import("types.zig");
 const shapes = @import("shapes.zig");
 const Canvas = @import("canvas.zig").Canvas;
+const helpers = @import("helpers.zig");
+const b = @import("box.zig");
+
+pub fn stackAll(cv: *Canvas, count: usize, orientation: t.Orientation) !void {
+    switch (orientation) {
+        .HORIZONTAL => try helpers.autoBoxes(
+            cv,
+            count,
+            cv.getCol() - 1,
+            cv.getRow() - 1,
+            cv.margin,
+            .HORIZONTAL,
+        ),
+        .VERTICAL => try helpers.autoBoxes(
+            cv,
+            count,
+            cv.getRow() - 1,
+            cv.getCol() - 1,
+            cv.margin,
+            .VERTICAL,
+        ),
+    }
+}
 
 pub fn autoBoxes(cv: *Canvas, count: usize, grow_point: t.Unit, static_point: t.Unit, margin: t.Unit, orientation: t.Orientation) !void {
     if (count <= 0) return;

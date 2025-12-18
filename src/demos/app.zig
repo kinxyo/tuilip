@@ -6,7 +6,7 @@ const Canvas = tui.Canvas;
 
 pub fn main() !void {
     // SETUP ------------
-    var buffer_alloc: [1024 * 60]u8 = undefined;
+    var buffer_alloc: [1024 * 70]u8 = undefined;
     var fba: std.heap.FixedBufferAllocator = .init(&buffer_alloc);
     const allocator = fba.allocator();
 
@@ -35,42 +35,17 @@ pub fn main() !void {
     defer cv.fmt.cursor_show();
 
     // RENDER LOOP ------------
-    var bg: tui.types.BG = .red;
-    var fg: tui.types.FG = .red;
+    try renderLoop(&cv);
+}
+fn renderLoop(cv: *Canvas) !void {
+    var pos_col: tui.types.Unit = 1;
 
-    var iter: i32 = 0;
-    while (iter < 5) : (iter += 1) {
-        switch (iter) {
-            else => {
-                bg = .red;
-                fg = .red;
-            },
-            1 => {
-                bg = .yellow;
-                fg = .yellow;
-            },
-            2 => {
-                bg = .bright_blue;
-                fg = .bright_blue;
-            },
-            3 => {
-                bg = .green;
-                fg = .green;
-            },
-            4 => {
-                bg = .bright_red;
-                fg = .bright_red;
-                iter = -1;
-            },
-        }
+    while (true) {
+        try cv.div(.{ .row = 1, .col = pos_col }, 5, 10);
+        cv.render();
 
-        for (cv.margin..cv.getCol()) |x| {
-            for (cv.margin..cv.getRow()) |y| {
-                try cv.drawC(x, y, .{ .char = ' ', .bg = bg, .fg = fg });
-            }
-
-            cv.render();
-            std.Thread.sleep(std.time.ns_per_ms * 15);
-        }
+        const key = try cv.fmt.reader.takeByte();
+        if (key == 'q') break;
+        if (key == 'e') pos_col += 1;
     }
 }

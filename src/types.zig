@@ -82,3 +82,41 @@ pub const BG = enum(u8) {
         return self != .default;
     }
 };
+
+/// Struct `Cell` represents buffer for each pixel.
+pub const Cell = struct {
+    bg: BG = .default,
+    fg: FG = .default,
+    char: Unicode = ' ',
+};
+
+/// struct representing collection of x and y coordinate.
+pub const OldPoint = struct {
+    x: Unit,
+    y: Unit,
+};
+
+/// Point (row x col)
+pub const Point = struct {
+    row: Unit,
+    col: Unit,
+};
+
+/// For creating shape of box
+/// ┌─┐│└┘
+pub const Side = enum(Unicode) {
+    TopLeft = '┌',
+    TopRight = '┐',
+    BottomLeft = '└',
+    BottomRight = '┘',
+    SideHzn = '─',
+    SideVtl = '│',
+};
+
+pub const Box = struct {
+    row: Unit,
+    col: Unit,
+    length: Unit = 1,
+    breadth: Unit = 1,
+    zindex: usize = 1,
+};
