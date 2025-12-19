@@ -1,4 +1,5 @@
-const colors = @import("color_types.zig");
+pub const colors = @import("color_types.zig");
+pub const Box = @import("box.zig").Box;
 
 /// Type assertion for measuring unit of position.
 pub const Unit = u16;
@@ -46,4 +47,23 @@ pub const Direction = enum {
     DOWN,
     LEFT,
     RIGHT,
+};
+
+const PositionalUnit = u16;
+
+pub const Position = struct {
+    top: PositionalUnit = 0,
+    left: PositionalUnit = 0,
+    // bottom: PositionalUnit = 0,
+    // right: PositionalUnit = 0,
+};
+
+pub const Widget = union(enum) {
+    text: []const u8,
+    box: Box,
+};
+
+pub const Child = struct {
+    widget: Widget,
+    pos: Position,
 };

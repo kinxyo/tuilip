@@ -34,18 +34,15 @@ pub fn main() !void {
     var pos_col: tui.types.Unit = 1;
 
     while (true) {
-        try cv.insert(.BOX, .{ .row = pos_row, .col = pos_col }, 10, 15);
+        var box: tui.types.Box = .{ .height = 10, .width = 15, .origin = .{ .col = pos_col, .row = pos_row } };
+        try box.insert(allocator, .{ .text = "click here" }, .{ .top = 50, .left = 50 });
+
+        defer box.child.deinit(allocator);
+        cv.onScreen(box, .draw) catch break;
         cv.render();
 
-        const key = try cv.fmt.reader.takeByte();
-        if (key == 'q') break;
-        if (key == 'a' and pos_col > 0) {
-            try cv.remove(.BOX, .{ .row = pos_row, .col = pos_col }, 10, 15);
-            pos_col -= 1;
-        }
-        if (key == 'd' and pos_col + 15 < cv.getCol()) {
-            try cv.remove(.BOX, .{ .row = pos_row, .col = pos_col }, 10, 15);
-            pos_col += 1;
-        }
+        std.Thread.sleep(std.time.ns_per_ms * 10);
+        try cv.onScreen(box, .erase);
+        pos_col += 1;
     }
 }
