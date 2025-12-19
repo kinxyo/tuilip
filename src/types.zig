@@ -1,16 +1,43 @@
-/// position
+const colors = @import("color_types.zig");
+
+/// Type assertion for measuring unit of position.
 pub const Unit = u16;
 
-/// Percentage unit for specifying position
-pub const RelativePositionalUnit = f32;
-
-/// character type (pixel size)
+/// Type assertion for encoding string.
 pub const Unicode = u21;
 
-/// Orientation for `stackAll` fn.
+/// Enum for creating shape of box: ┌─┐│└┘
+pub const Side = enum(Unicode) {
+    TopLeft = '┌',
+    TopRight = '┐',
+    BottomLeft = '└',
+    BottomRight = '┘',
+    SideHzn = '─',
+    SideVtl = '│',
+    None = ' ',
+};
+
+/// Struct `Cell` represents buffer for each pixel.
+pub const Cell = struct {
+    bg: colors.BackgroundColor = .default,
+    fg: colors.ForegroundColor = .default,
+    char: Unicode = ' ',
+};
+
+/// Struct representing Point (row x col)
+pub const Point = struct {
+    row: Unit,
+    col: Unit,
+};
+
+/// Enum for Orientation:
+/// `H` for horizontal.
+/// `V` for vertical.
 pub const Orientation = enum {
-    HORIZONTAL,
-    VERTICAL,
+    /// Horizontal
+    H,
+    /// Vertical
+    V,
 };
 
 /// Direction specifying for box/container.
@@ -19,104 +46,4 @@ pub const Direction = enum {
     DOWN,
     LEFT,
     RIGHT,
-};
-
-/// Direction specifying for box/container.
-pub const Position = struct {
-    top: RelativePositionalUnit,
-    left: RelativePositionalUnit,
-    // bottom: Unit,
-    // right: Unit,
-};
-
-/// Foreground color enums (ansi codes)
-pub const FG = enum(u8) {
-    black = 30,
-    red = 31,
-    green = 32,
-    yellow = 33,
-    blue = 34,
-    magenta = 35,
-    cyan = 36,
-    white = 37,
-
-    default = 39,
-
-    bright_black = 90,
-    bright_red = 91,
-    bright_green = 92,
-    bright_yellow = 93,
-    bright_blue = 94,
-    bright_magenta = 95,
-    bright_cyan = 96,
-    bright_white = 97,
-
-    pub fn isSet(self: FG) bool {
-        return self != .default;
-    }
-};
-
-/// Background color enums (ansi codes)
-pub const BG = enum(u8) {
-    black = 40,
-    red = 41,
-    green = 42,
-    yellow = 43,
-    blue = 44,
-    magenta = 45,
-    cyan = 46,
-    white = 47,
-
-    default = 39,
-
-    bright_black = 100,
-    bright_red = 101,
-    bright_green = 102,
-    bright_yellow = 103,
-    bright_blue = 104,
-    bright_magenta = 105,
-    bright_cyan = 106,
-    bright_white = 107,
-
-    pub fn isSet(self: BG) bool {
-        return self != .default;
-    }
-};
-
-/// Struct `Cell` represents buffer for each pixel.
-pub const Cell = struct {
-    bg: BG = .default,
-    fg: FG = .default,
-    char: Unicode = ' ',
-};
-
-/// struct representing collection of x and y coordinate.
-pub const OldPoint = struct {
-    x: Unit,
-    y: Unit,
-};
-
-/// Point (row x col)
-pub const Point = struct {
-    row: Unit,
-    col: Unit,
-};
-
-/// For creating shape of box
-/// ┌─┐│└┘
-pub const Side = enum(Unicode) {
-    TopLeft = '┌',
-    TopRight = '┐',
-    BottomLeft = '└',
-    BottomRight = '┘',
-    SideHzn = '─',
-    SideVtl = '│',
-};
-
-pub const Box = struct {
-    row: Unit,
-    col: Unit,
-    length: Unit = 1,
-    breadth: Unit = 1,
-    zindex: usize = 1,
 };

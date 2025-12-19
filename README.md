@@ -4,7 +4,7 @@ TUI library/framework in Zig.
 
 ---
 
-## TODOs:
+## Learnt:
 
 - [x] Setting terminal flags
 - [x] Buffer management

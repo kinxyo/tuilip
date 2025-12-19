@@ -1,10 +1,12 @@
 const std = @import("std");
-const t = @import("types.zig");
 const f = @import("fmt.zig");
+const t = @import("types.zig");
+const b = @import("box.zig");
 
 pub const CanvasError = error{
     RowOutOfBounds,
     ColOutOfBounds,
+    InvalidShape,
 };
 
 pub const Canvas = struct {
@@ -15,7 +17,7 @@ pub const Canvas = struct {
     front_buffer: []t.Cell,
     margin: t.Unit,
 
-    // ======== Drawing (primitives) ========
+    // ======== Primitives ========
 
     /// Draw directly on canvas by passing buffers and other configurations.
     pub fn directDraw(self: *const Canvas, x: usize, y: usize, comptime char: t.Unicode) void {
@@ -27,7 +29,7 @@ pub const Canvas = struct {
         if (col >= self.cols) return error.ColOutOfBounds;
         if (row >= self.rows) return error.RowOutOfBounds;
 
-        const index = row * self.getCol() + col;
+        const index = row * self.cols + col;
         self.back_buffer[index].char = char;
     }
 
@@ -39,6 +41,8 @@ pub const Canvas = struct {
 
         const index = row * self.cols + col;
         self.back_buffer[index].char = ' ';
+        self.back_buffer[index].bg = .default;
+        self.back_buffer[index].fg = .default;
     }
 
     /// Draw on canvas by updating back buffer along with Color & style configuration.
@@ -87,19 +91,57 @@ pub const Canvas = struct {
         @memcpy(self.front_buffer, self.back_buffer);
     }
 
-    // ======== Drawing (advance) ========
+    // ======== Implmentations (shapes/classes) ========
+
+    const Widget = enum {
+        BOX,
+    };
+
+    const ERASE = true;
+    const DRAW = false;
+
+    pub fn remove(self: *Canvas, widget: Widget, origin: ?t.Point, height: t.Unit, width: t.Unit) CanvasError!void {
+        switch (widget) {
+            .BOX => try self.div(origin, height, width, ERASE),
+        }
+    }
+
+    pub fn insert(self: *Canvas, widget: Widget, origin: ?t.Point, height: t.Unit, width: t.Unit) CanvasError!void {
+        switch (widget) {
+            .BOX => try self.div(origin, height, width, DRAW),
+        }
+    }
 
     /// Container (Equvialent to `Div` element from html).
-    pub fn div(self: *Canvas, point: ?t.Point, length: t.Unit, breadth: t.Unit) !void {
-        // TODO: get space (origin points).
-        const p: t.Point = point orelse .{ .row = 1, .col = 1 };
-        const box: t.Box = .{ .row = p.row, .col = p.col, .length = length, .breadth = breadth };
-        for (box.row..(box.row + box.length)) |y| {
-            for (box.col..(box.col + box.breadth)) |x| {
-                const is_border: bool = (y == box.row or y == (box.row + box.length - 1)) or (x == box.col or x == (box.col + box.breadth - 1));
+    fn div(self: *Canvas, point: ?t.Point, height: t.Unit, width: t.Unit, erase: bool) !void {
+        const p: t.Point = point orelse .{ .row = 1, .col = 1 }; // TODO: get space (origin points).
+        const box: b.Box = .{ .origin = p, .height = height, .width = width };
+        for (box.origin.row..(box.origin.row + box.height)) |y| {
+            for (box.origin.col..(box.origin.col + box.width)) |x| {
+                var char: t.Side = .None;
 
-                if (is_border) {
-                    try self.draw(x, y, '.');
+                // NOTE: `-1` is needed because loop running is exclusive of last element. (I keep forgetting).
+                const lh = box.height - 1;
+                const lw = box.width - 1;
+
+                // Sides
+                if (x == box.origin.col) char = .SideVtl;
+                if (x == box.origin.col + lw) char = .SideVtl;
+                if (y == box.origin.row) char = .SideHzn;
+                if (y == box.origin.row + lh) char = .SideHzn;
+
+                // Corners
+                if (x == box.origin.col and y == box.origin.row) char = .TopLeft;
+                if (x == box.origin.col + lw and y == box.origin.row) char = .TopRight;
+                if (x == box.origin.col and y == box.origin.row + lh) char = .BottomLeft;
+                if (x == box.origin.col + lw and y == box.origin.row + lh) char = .BottomRight;
+
+                if (char != .None) {
+                    if (erase) {
+                        try self.clear(x, y);
+                    } else {
+                        try self.drawC(x, y, .{ .char = @intFromEnum(char) });
+                    }
                 }
             }
         }
@@ -115,7 +157,7 @@ pub const Canvas = struct {
         var size: std.posix.winsize = undefined;
         const ret = std.posix.system.ioctl(fmt.handle, std.posix.T.IOCGWINSZ, @intFromPtr(&size));
 
-        // NOT HANDLING ERROR BUT CREATING ARBITRARY CANVAS
+        // TODO: Review appraoch: NOT HANDLING ERROR BUT CREATING ARBITRARY CANVAS
         const term_r: t.Unit = if (ret != 0) 10 else size.row;
         const term_c: t.Unit = if (ret != 0) 10 else size.col;
 
