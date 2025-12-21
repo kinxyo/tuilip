@@ -8,12 +8,20 @@ pub const CanvasError = error{
     InvalidShape,
 };
 
+/// Unified API responsible for following operations:
+/// Primitives, Wrapper functions, Implementation of Shapes & Terminal configuration.
 pub const Canvas = struct {
+    /// needs it to output to terminal
     fmt: *f.Fmt,
+    /// defines the drawable area
     rows: t.Unit,
+    /// defines the drawable area
     cols: t.Unit,
+    /// the actual pixels (next-screen)
     back_buffer: []t.Cell,
+    /// the actual pixels (on-screen)
     front_buffer: []t.Cell,
+    /// part of the drawable area definition
     margin: t.Unit,
 
     // ======== Primitives ========
@@ -81,7 +89,7 @@ pub const Canvas = struct {
         @memcpy(self.front_buffer, self.back_buffer);
     }
 
-    // ======== Syntactic Sugar ========
+    // ======== Wrapper Functions ========
 
     /// Draw a pixel on specified coordinates on canvas by updating back buffer.
     pub fn draw(self: *const Canvas, col: usize, row: usize, char: t.Unicode) CanvasError!void {
@@ -100,6 +108,27 @@ pub const Canvas = struct {
 
     pub fn clearString(self: *Canvas, col: usize, row: usize, s: []const u8) CanvasError!void {
         try self.drawStringC(col, row, s, .default, .default, .erase);
+    }
+
+    /// WARN: EXPERMINATAL right now -- only use if the canvas is empty and nothing is drawn.
+    pub fn createBox(self: *const Canvas, height: t.Unit, width: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) t.Box {
+        const x = switch (xaxis) {
+            .left => self.margin,
+            .right => self.getCol() - width,
+            .center => self.getCol() / 2 - width / 2,
+        };
+
+        const y = switch (yaxis) {
+            .up => self.margin,
+            .down => self.getRow() - height,
+            .center => self.getRow() / 2 - height / 2,
+        };
+
+        return .{
+            .height = height,
+            .width = width,
+            .origin = .{ .col = x, .row = y },
+        };
     }
 
     // ======== Implmentations (shapes/classes) ========
@@ -132,16 +161,27 @@ pub const Canvas = struct {
                         const lw = box.width - 1;
 
                         // Sides
-                        if (x == box.origin.col) char = .SideVtl;
-                        if (x == box.origin.col + lw) char = .SideVtl;
-                        if (y == box.origin.row) char = .SideHzn;
-                        if (y == box.origin.row + lh) char = .SideHzn;
-
-                        // Corners
-                        if (x == box.origin.col and y == box.origin.row) char = .TopLeft;
-                        if (x == box.origin.col + lw and y == box.origin.row) char = .TopRight;
-                        if (x == box.origin.col and y == box.origin.row + lh) char = .BottomLeft;
-                        if (x == box.origin.col + lw and y == box.origin.row + lh) char = .BottomRight;
+                        if (x == box.origin.col) {
+                            if (y == box.origin.row) {
+                                char = .TopLeft;
+                            } else if (y == box.origin.row + lh) {
+                                char = .BottomLeft;
+                            } else {
+                                char = .SideVtl;
+                            }
+                        } else if (x == box.origin.col + lw) {
+                            if (y == box.origin.row) {
+                                char = .TopRight;
+                            } else if (y == box.origin.row + lh) {
+                                char = .BottomRight;
+                            } else {
+                                char = .SideVtl;
+                            }
+                        } else if (y == box.origin.row) {
+                            char = .SideHzn;
+                        } else if (y == box.origin.row + lh) {
+                            char = .SideHzn;
+                        }
 
                         if (char != .None) {
                             try self.drawC(x, y, .{ .char = @intFromEnum(char) });
@@ -155,8 +195,18 @@ pub const Canvas = struct {
 
     fn drawChild(self: *Canvas, box: t.Box, m: Mode) !void {
         for (box.child.items) |c| {
-            const row_offset = c.pos.top * box.height / 100;
-            const col_offset = c.pos.left * box.width / 100;
+            // TODO: try using float and see if accuracy improves.
+
+            const float_pos_top: f32 = (c.pos.top);
+            const float_pos_left: f32 = (c.pos.left);
+            const float_bh: f32 = @floatFromInt(box.height);
+            const float_bw: f32 = @floatFromInt(box.width);
+
+            const float_row_offset: f32 = float_pos_top * float_bh / 100;
+            const float_col_offset: f32 = float_pos_left * float_bw / 100;
+
+            const row_offset: usize = @intFromFloat(float_row_offset);
+            const col_offset: usize = @intFromFloat(float_col_offset);
 
             const row = box.origin.row + row_offset;
             const col = box.origin.col + col_offset;
@@ -242,5 +292,9 @@ pub const Canvas = struct {
     pub fn deinit(self: *Canvas, allocator: std.mem.Allocator) void {
         allocator.free(self.back_buffer);
         allocator.free(self.front_buffer);
+    }
+
+    pub fn log(self: *const Canvas) void {
+        std.log.debug("{d}:{d}\n", .{ self.rows, self.cols });
     }
 };

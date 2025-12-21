@@ -12,4 +12,9 @@ pub const Box = struct {
     pub fn insert(self: *Box, allocator: std.mem.Allocator, child: t.Widget, pos: t.Position) !void {
         try self.child.append(allocator, .{ .widget = child, .pos = pos });
     }
+
+    /// Meant for debugging.
+    pub fn log(self: *const Box) void {
+        std.log.debug("Up: row={}, col={}\n", .{ self.origin.row, self.origin.col });
+    }
 };

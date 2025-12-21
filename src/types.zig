@@ -42,14 +42,20 @@ pub const Orientation = enum {
 };
 
 /// Direction specifying for box/container.
-pub const Direction = enum {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
+pub const YAxis = enum {
+    up,
+    center,
+    down,
 };
 
-const PositionalUnit = u16;
+/// Direction specifying for box/container.
+pub const XAxis = enum {
+    left,
+    center,
+    right,
+};
+
+const PositionalUnit = f32;
 
 pub const Position = struct {
     top: PositionalUnit = 0,

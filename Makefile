@@ -4,6 +4,9 @@ run:
 	zig build
 	@$(MAKE) install
 
+debug:
+	zig build run 2>&1 | less
+
 prod:
 	zig build -Doptimize=ReleaseFast
 	@$(MAKE) install

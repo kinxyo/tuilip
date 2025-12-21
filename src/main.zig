@@ -20,7 +20,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var cv: tui.Canvas = .init(&fmt, allocator, 5);
+    var cv: tui.Canvas = .init(&fmt, allocator, 0);
     defer cv.deinit(allocator);
 
     const os = try cv.enableRaw();
@@ -30,19 +30,21 @@ pub fn main() !void {
     cv.fmt.cursor_hide();
     defer cv.fmt.cursor_show();
 
-    const pos_row: tui.types.Unit = 2;
-    var pos_col: tui.types.Unit = 1;
+    // cv.log();
 
     while (true) {
-        var box: tui.types.Box = .{ .height = 10, .width = 15, .origin = .{ .col = pos_col, .row = pos_row } };
-        try box.insert(allocator, .{ .text = "click here" }, .{ .top = 50, .left = 50 });
+        const box_u = cv.createBox(10, 20, .up, .center);
+        const box_l = cv.createBox(10, 20, .center, .left);
+        const box_d = cv.createBox(10, 20, .down, .center);
+        const box_r = cv.createBox(10, 20, .center, .right);
 
-        defer box.child.deinit(allocator);
-        cv.onScreen(box, .draw) catch break;
+        try cv.onScreen(box_u, .draw);
+        try cv.onScreen(box_l, .draw);
+        try cv.onScreen(box_d, .draw);
+        try cv.onScreen(box_r, .draw);
+
         cv.render();
-
-        std.Thread.sleep(std.time.ns_per_ms * 10);
-        try cv.onScreen(box, .erase);
-        pos_col += 1;
+        const key = try cv.fmt.reader.takeByte();
+        if (key == 'q') break;
     }
 }
