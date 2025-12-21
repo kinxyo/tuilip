@@ -2,46 +2,56 @@ const std = @import("std");
 const t = @import("types.zig");
 
 /// Struct representing Box (underlying definition for various shapes and classes).
+/// children are lazy init
 pub const Box = struct {
+    allocator: std.mem.Allocator,
     origin: t.Point,
     height: t.Unit = 1,
     width: t.Unit = 1,
     zindex: usize = 1,
-    child: std.ArrayList(t.Widget) = .empty,
+    children: ?std.StringHashMap(t.Widget) = null,
 
     //  ========= PUBLIC =========
 
+    /// To insert Box widget in the container.
+    /// The position provided IS NOT bounded within container's constraints.
     pub fn addBox(
         self: *Box,
-        allocator: std.mem.Allocator,
+        id: []const u8,
         size: t.Size,
         pos: t.ArbPoint,
-    ) !Box {
+    ) !*Box {
         const box: t.Box = .{
+            .allocator = self.allocator,
             .height = size.height,
             .width = size.width,
             .origin = self.calculatePos(pos),
+            .children = null,
         };
-        try self.insert(allocator, .{ .box = box });
-        return box;
+
+        try self.insert(id, .{ .box = box });
+        return &self.children.?.getPtr(id).?.box;
     }
 
-    pub fn addBoundedBox(self: *Box, allocator: std.mem.Allocator, size: t.Size, pos: t.Point) !Box {
+    /// To insert Box widget in the container.
+    /// The position provided IS bounded within container's constraints.
+    pub fn addBoundedBox(self: *Box, id: []const u8, size: t.Size, pos: t.Point) !Box {
         const box: t.Box = .{
             .height = size.height,
             .width = size.width,
             .origin = self.calculateBoundedPos(pos),
         };
-        try self.insert(allocator, .{ .box = box });
-        return box;
+        try self.insert(id, .{ .box = box });
+        return &self.children.?.getPtr(id).?.box;
     }
 
-    pub fn addText(self: *Box, allocator: std.mem.Allocator, str: []const u8, pos: t.Point) !void {
+    /// To insert Text widget in the container.
+    pub fn addText(self: *Box, id: []const u8, str: []const u8, pos: t.Point) !void {
         const text: t.Text = .{
             .value = str,
             .origin = self.calculatePos(pos),
         };
-        try self.insert(allocator, .{ .text = text });
+        try self.insert(id, .{ .text = text });
     }
 
     /// Meant for debugging.
@@ -49,8 +59,16 @@ pub const Box = struct {
         std.log.debug("Up: row={}, col={}\n", .{ self.origin.row, self.origin.col });
     }
 
+    /// Destroy all box data.
+    pub fn deinit(self: *Box) void {
+        if (self.children) |*c| {
+            c.deinit();
+        }
+    }
+
     //  ========= PRIVATE =========
 
+    // TODO: Optimize it further.
     fn calculatePos(self: *Box, pos: t.ArbPoint) t.Point {
         const pos_col: t.Unit = @intFromFloat(@abs(pos.col));
         const pos_row: t.Unit = @intFromFloat(@abs(pos.row));
@@ -67,8 +85,14 @@ pub const Box = struct {
         return .{ .col = self.origin.col + pos.col, .row = self.origin.row + pos.row };
     }
 
-    fn insert(self: *Box, allocator: std.mem.Allocator, child: t.Widget) !void {
-        try self.child.append(allocator, child);
+    fn insert(self: *Box, id: []const u8, child: t.Widget) !void {
+        if (self.children) |*c| {
+            try c.put(id, child);
+            return;
+        }
+
+        self.children = .init(self.allocator);
+        try self.children.?.put(id, child);
     }
 
     /// Depreciated calculate pos function

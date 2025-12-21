@@ -111,7 +111,7 @@ pub const Canvas = struct {
     }
 
     /// WARN: EXPERMINATAL right now -- only use if the canvas is empty and nothing is drawn.
-    pub fn createBox(self: *const Canvas, height: t.Unit, width: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) t.Box {
+    pub fn createBox(self: *const Canvas, allocator: std.mem.Allocator, height: t.Unit, width: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) t.Box {
         const x = switch (xaxis) {
             .left => self.margin,
             .right => self.getCol() - width,
@@ -125,18 +125,11 @@ pub const Canvas = struct {
         };
 
         return .{
+            .allocator = allocator,
             .height = height,
             .width = width,
             .origin = .{ .col = x, .row = y },
-        };
-    }
-
-    pub fn createChildBox(self: *const Canvas, height: t.Unit, width: t.Unit) t.Box {
-        _ = self;
-        return .{
-            .height = height,
-            .width = width,
-            .origin = .{ .col = 0, .row = 0 },
+            .children = null,
         };
     }
 
@@ -147,14 +140,24 @@ pub const Canvas = struct {
         erase,
     };
 
+    // Directly pass the widget to draw it on back buffer (next frame).
     pub fn onScreen(self: *Canvas, widget: anytype, m: Mode) CanvasError!void {
         switch (@TypeOf(widget)) {
             t.Box => try self.drawBox(widget, m),
+            t.Text => try self.drawText(widget, m),
             else => @compileError("Invalid widget provided."),
         }
     }
 
-    /// Container (Equvialent to `Div` element from html).
+    /// Implementation of Text widget. Draws on back buffer.
+    fn drawText(self: *Canvas, text: t.Text, m: Mode) CanvasError!void {
+        switch (m) {
+            .draw => try self.drawString(text.origin.col, text.origin.row, text.value),
+            .erase => try self.clearString(text.origin.col, text.origin.row, text.value),
+        }
+    }
+
+    /// Implementation of Box widget. Draws on back buffer.
     fn drawBox(self: *Canvas, box: t.Box, m: Mode) CanvasError!void {
         for (box.origin.row..(box.origin.row + box.height)) |y| {
             for (box.origin.col..(box.origin.col + box.width)) |x| {
@@ -203,22 +206,23 @@ pub const Canvas = struct {
     }
 
     fn drawChild(self: *Canvas, box: t.Box, m: Mode) !void {
-        for (box.child.items) |child| {
-            switch (child) {
-                .box => try self.drawBox(.{
-                    .height = child.box.height,
-                    .width = child.box.width,
-                    .origin = .{
-                        .col = @intCast(child.box.origin.col),
-                        .row = @intCast(child.box.origin.row),
-                    },
-                }, m),
-                .text => {
-                    switch (m) {
-                        .draw => try self.drawString(child.text.origin.col, child.text.origin.row, child.text.value),
-                        .erase => try self.clearString(child.text.origin.col, child.text.origin.row, child.text.value),
-                    }
-                },
+        if (box.children) |*c| {
+            var iter = c.iterator();
+
+            while (iter.next()) |widget| {
+                const child = widget.value_ptr.*;
+                switch (child) {
+                    .box => try self.drawBox(.{
+                        .allocator = child.box.allocator,
+                        .height = child.box.height,
+                        .width = child.box.width,
+                        .origin = .{
+                            .col = @intCast(child.box.origin.col),
+                            .row = @intCast(child.box.origin.row),
+                        },
+                    }, m),
+                    .text => try self.drawText(child.text, m),
+                }
             }
         }
     }
@@ -286,6 +290,15 @@ pub const Canvas = struct {
 
     pub fn disableRaw(self: *const Canvas, original: std.posix.termios) void {
         std.posix.tcsetattr(self.fmt.handle, .FLUSH, original) catch {};
+    }
+
+    pub fn clearScreen(self: *Canvas) void {
+        @memset(self.back_buffer, .{});
+    }
+
+    pub fn clearScreenForce(self: *Canvas) void {
+        @memset(self.back_buffer, .{});
+        self.renderForce();
     }
 
     /// Destroy the allocated safe for graceful exit of program and prevent memory leaks.

@@ -32,7 +32,7 @@ pub const Fmt = struct {
     }
 
     /// clear screen and reset cursor pos
-    pub fn clear(self: *Fmt) void {
+    pub fn clear_screen(self: *Fmt) void {
         self.print("\x1b[2J\x1b[H");
     }
 };
