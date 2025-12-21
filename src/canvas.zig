@@ -131,6 +131,15 @@ pub const Canvas = struct {
         };
     }
 
+    pub fn createChildBox(self: *const Canvas, height: t.Unit, width: t.Unit) t.Box {
+        _ = self;
+        return .{
+            .height = height,
+            .width = width,
+            .origin = .{ .col = 0, .row = 0 },
+        };
+    }
+
     // ======== Implmentations (shapes/classes) ========
 
     const Mode = enum {
@@ -194,29 +203,20 @@ pub const Canvas = struct {
     }
 
     fn drawChild(self: *Canvas, box: t.Box, m: Mode) !void {
-        for (box.child.items) |c| {
-            // TODO: try using float and see if accuracy improves.
-
-            const float_pos_top: f32 = (c.pos.top);
-            const float_pos_left: f32 = (c.pos.left);
-            const float_bh: f32 = @floatFromInt(box.height);
-            const float_bw: f32 = @floatFromInt(box.width);
-
-            const float_row_offset: f32 = float_pos_top * float_bh / 100;
-            const float_col_offset: f32 = float_pos_left * float_bw / 100;
-
-            const row_offset: usize = @intFromFloat(float_row_offset);
-            const col_offset: usize = @intFromFloat(float_col_offset);
-
-            const row = box.origin.row + row_offset;
-            const col = box.origin.col + col_offset;
-
-            switch (c.widget) {
-                .box => try self.drawBox(c.widget.box, m),
+        for (box.child.items) |child| {
+            switch (child) {
+                .box => try self.drawBox(.{
+                    .height = child.box.height,
+                    .width = child.box.width,
+                    .origin = .{
+                        .col = @intCast(child.box.origin.col),
+                        .row = @intCast(child.box.origin.row),
+                    },
+                }, m),
                 .text => {
                     switch (m) {
-                        .draw => try self.drawString(col, row, c.widget.text),
-                        .erase => try self.clearString(col, row, c.widget.text),
+                        .draw => try self.drawString(child.text.origin.col, child.text.origin.row, child.text.value),
+                        .erase => try self.clearString(child.text.origin.col, child.text.origin.row, child.text.value),
                     }
                 },
             }

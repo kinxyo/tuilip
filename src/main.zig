@@ -29,22 +29,41 @@ pub fn main() !void {
     cv.fmt.clear();
     cv.fmt.cursor_hide();
     defer cv.fmt.cursor_show();
+    defer cv.fmt.clear();
 
-    // cv.log();
+    var char_col: f32 = 1;
+    var char_row: f32 = 1;
 
     while (true) {
-        const box_u = cv.createBox(10, 20, .up, .center);
-        const box_l = cv.createBox(10, 20, .center, .left);
-        const box_d = cv.createBox(10, 20, .down, .center);
-        const box_r = cv.createBox(10, 20, .center, .right);
+        var world = cv.createBox(10, 20, .center, .center);
 
-        try cv.onScreen(box_u, .draw);
-        try cv.onScreen(box_l, .draw);
-        try cv.onScreen(box_d, .draw);
-        try cv.onScreen(box_r, .draw);
+        const character = try world.addBox(
+            allocator,
+            .{ .height = 2, .width = 2 },
+            .{ .row = char_row, .col = char_col },
+        );
+        defer world.child.deinit(allocator);
+
+        try cv.onScreen(world, .draw);
 
         cv.render();
         const key = try cv.fmt.reader.takeByte();
         if (key == 'q') break;
+        if (key == 'a') {
+            try cv.onScreen(character, .erase);
+            char_col -= 1;
+        }
+        if (key == 'd') {
+            try cv.onScreen(character, .erase);
+            char_col += 1;
+        }
+        if (key == 's') {
+            try cv.onScreen(character, .erase);
+            char_row += 1;
+        }
+        if (key == 'w') {
+            try cv.onScreen(character, .erase);
+            char_row -= 1;
+        }
     }
 }

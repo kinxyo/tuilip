@@ -31,6 +31,18 @@ pub const Point = struct {
     col: Unit,
 };
 
+/// Struct representing Movement relative to arbitrary point (row x col)
+pub const ArbPoint = struct {
+    row: f32,
+    col: f32,
+};
+
+/// Struct representing Size (width x height)
+pub const Size = struct {
+    width: Unit,
+    height: Unit,
+};
+
 /// Enum for Orientation:
 /// `H` for horizontal.
 /// `V` for vertical.
@@ -65,11 +77,11 @@ pub const Position = struct {
 };
 
 pub const Widget = union(enum) {
-    text: []const u8,
+    text: Text,
     box: Box,
 };
 
-pub const Child = struct {
-    widget: Widget,
-    pos: Position,
+pub const Text = struct {
+    value: []const u8,
+    origin: Point,
 };
