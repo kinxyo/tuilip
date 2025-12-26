@@ -246,7 +246,6 @@ pub const Canvas = struct {
     };
 
     /// Create a canvas instance that contains terminal size and allows draw operations.
-    /// Needs to pass a `fmt` instance for drawing and event polling.
     /// The function will panic if memory is insufficient.
     pub fn init(allocator: std.mem.Allocator, margin: t.Unit) Canvas {
         const term_size = config.getSize();
@@ -286,8 +285,9 @@ pub const Canvas = struct {
     }
 
     /// Use this function if you want Canvas width with margin consideration.
-    pub fn getCenter(self: *const Canvas) t.Point {
-        return .{ .col = self.getCol() / 2, .row = self.getRow() / 2 };
+    /// Requires offset (horizontal length) to center align the drawing.
+    pub fn getCenter(self: *const Canvas, offset: t.Unit) t.Point {
+        return .{ .col = self.getCol() / 2 - offset, .row = self.getRow() / 2 };
     }
 
     /// Disables (currently: ECHO, ICANON) flags for terminal,
