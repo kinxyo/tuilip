@@ -1,6 +1,7 @@
 const std = @import("std");
-const f = @import("fmt.zig");
 const t = @import("types.zig");
+const io = @import("io.zig");
+const config = @import("config.zig");
 
 pub const CanvasError = error{
     RowOutOfBounds,
@@ -11,8 +12,8 @@ pub const CanvasError = error{
 /// Unified API responsible for following operations:
 /// Primitives, Wrapper functions, Implementation of Shapes & Terminal configuration.
 pub const Canvas = struct {
-    /// needs it to output to terminal
-    fmt: *f.Fmt,
+    /// allocator
+    allocator: std.mem.Allocator,
     /// defines the drawable area
     rows: t.Unit,
     /// defines the drawable area
@@ -23,16 +24,15 @@ pub const Canvas = struct {
     front_buffer: []t.Cell,
     /// part of the drawable area definition
     margin: t.Unit,
+    /// children are lazy init
+    children: t.WidgetList,
+    /// Terminal state without enabling facts
+    terminal_state: std.posix.termios,
 
     // ======== Primitives ========
 
-    /// Draw directly on canvas by passing buffers and other configurations.
-    pub fn directDraw(self: *const Canvas, x: usize, y: usize, comptime char: t.Unicode) void {
-        self.fmt.printf("\x1b[{d};{d}H{u}", .{ y + 1, x + 1, char });
-    }
-
     /// Draw on canvas by updating back buffer along with Color & style configuration.
-    pub fn drawC(self: *Canvas, col: usize, row: usize, cell: t.Cell) CanvasError!void {
+    pub fn drawCS(self: *Canvas, col: usize, row: usize, cell: t.Cell) CanvasError!void {
         if (col >= self.cols) return error.ColOutOfBounds;
         if (row >= self.rows) return error.RowOutOfBounds;
 
@@ -40,7 +40,7 @@ pub const Canvas = struct {
         self.back_buffer[index] = cell;
     }
 
-    pub fn drawStringC(self: *Canvas, col: usize, row: usize, s: []const u8, fg: t.colors.ForegroundColor, bg: t.colors.BackgroundColor, m: Mode) CanvasError!void {
+    pub fn drawStringCS(self: *Canvas, col: usize, row: usize, s: []const u8, fg: t.colors.ForegroundColor, bg: t.colors.BackgroundColor, m: Mode) CanvasError!void {
         if (col >= self.cols) return error.ColOutOfBounds;
         if (row >= self.rows) return error.RowOutOfBounds;
 
@@ -59,20 +59,15 @@ pub const Canvas = struct {
                 const r = idx / self.cols;
                 const c = idx % self.cols;
 
-                if (back.bg.isSet()) {
-                    self.fmt.printf("\x1b[{d};{d}m", .{ back.fg, back.bg });
-                } else {
-                    self.fmt.printf("\x1b[{d}m", .{back.fg});
-                }
-
-                self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
-                self.fmt.print("\x1b[0m");
+                io.setColor(back.bg, back.fg);
+                io.directDraw(c, r, back.char);
+                io.resetCode();
 
                 self.front_buffer[idx] = self.back_buffer[idx];
             }
         }
 
-        self.fmt.flush();
+        io.flush();
     }
 
     /// Flush back buffer without comparing with front buffer
@@ -83,35 +78,41 @@ pub const Canvas = struct {
             const r = idx / self.cols;
             const c = idx % self.cols;
 
-            self.fmt.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
+            io.printf("\x1b[{d};{d}H{u}", .{ r + 1, c + 1, back.char });
         }
-        self.fmt.flush();
+        io.flush();
         @memcpy(self.front_buffer, self.back_buffer);
     }
 
     // ======== Wrapper Functions ========
 
+    /// Poll for user input.
+    pub fn poll(self: *const Canvas) ?u8 {
+        _ = self;
+        return io.inputChar() catch null;
+    }
+
     /// Draw a pixel on specified coordinates on canvas by updating back buffer.
-    pub fn draw(self: *const Canvas, col: usize, row: usize, char: t.Unicode) CanvasError!void {
-        try self.drawC(col, row, .{ .char = char });
+    pub fn draw(self: *Canvas, col: usize, row: usize, char: t.Unicode) CanvasError!void {
+        try self.drawCS(col, row, .{ .char = char });
     }
 
     /// Clear a pixel on specified coordinates by updating back buffer.
     /// Will require `.flush()` to render on canvas.
     pub fn clear(self: *Canvas, col: usize, row: usize) CanvasError!void {
-        try self.drawC(col, row, .{ .char = ' ' });
+        try self.drawCS(col, row, .{ .char = ' ' });
     }
 
     pub fn drawString(self: *Canvas, col: usize, row: usize, s: []const u8) CanvasError!void {
-        try self.drawStringC(col, row, s, .default, .default, .draw);
+        try self.drawStringCS(col, row, s, .default, .default, .draw);
     }
 
     pub fn clearString(self: *Canvas, col: usize, row: usize, s: []const u8) CanvasError!void {
-        try self.drawStringC(col, row, s, .default, .default, .erase);
+        try self.drawStringCS(col, row, s, .default, .default, .erase);
     }
 
     /// WARN: EXPERMINATAL right now -- only use if the canvas is empty and nothing is drawn.
-    pub fn createBox(self: *const Canvas, allocator: std.mem.Allocator, height: t.Unit, width: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) t.Box {
+    pub fn createBox(self: *Canvas, id: []const u8, height: t.Unit, width: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) !void {
         const x = switch (xaxis) {
             .left => self.margin,
             .right => self.getCol() - width,
@@ -124,13 +125,20 @@ pub const Canvas = struct {
             .center => self.getRow() / 2 - height / 2,
         };
 
-        return .{
-            .allocator = allocator,
-            .height = height,
-            .width = width,
-            .origin = .{ .col = x, .row = y },
-            .children = null,
-        };
+        try self.insertChildren(id, .{
+            .box = .{
+                .allocator = self.allocator,
+                .height = height,
+                .width = width,
+                .origin = .{ .col = x, .row = y },
+                .children = .{},
+            },
+        });
+    }
+
+    /// Generic insert function for adding widget to box.
+    fn insertChildren(self: *Canvas, id: []const u8, child: t.Widget) !void {
+        try self.children.add(self.allocator, id, child);
     }
 
     // ======== Implmentations (shapes/classes) ========
@@ -142,9 +150,9 @@ pub const Canvas = struct {
 
     // Directly pass the widget to draw it on back buffer (next frame).
     pub fn onScreen(self: *Canvas, widget: anytype, m: Mode) CanvasError!void {
-        switch (@TypeOf(widget)) {
-            t.Box => try self.drawBox(widget, m),
-            t.Text => try self.drawText(widget, m),
+        switch (@TypeOf(widget.*)) {
+            t.Box => try self.drawBox(widget.*, m),
+            t.Text => try self.drawText(widget.*, m),
             else => @compileError("Invalid widget provided."),
         }
     }
@@ -196,7 +204,7 @@ pub const Canvas = struct {
                         }
 
                         if (char != .None) {
-                            try self.drawC(x, y, .{ .char = @intFromEnum(char) });
+                            try self.drawCS(x, y, .{ .char = @intFromEnum(char) });
                         }
                     },
                 }
@@ -206,7 +214,7 @@ pub const Canvas = struct {
     }
 
     fn drawChild(self: *Canvas, box: t.Box, m: Mode) !void {
-        if (box.children) |*c| {
+        if (box.children.data) |*c| {
             var iter = c.iterator();
 
             while (iter.next()) |widget| {
@@ -216,6 +224,7 @@ pub const Canvas = struct {
                         .allocator = child.box.allocator,
                         .height = child.box.height,
                         .width = child.box.width,
+                        .children = .{},
                         .origin = .{
                             .col = @intCast(child.box.origin.col),
                             .row = @intCast(child.box.origin.row),
@@ -231,19 +240,18 @@ pub const Canvas = struct {
 
     // ======== Config ========
 
+    const RunMode = enum {
+        DEBUG,
+        PROD,
+    };
+
     /// Create a canvas instance that contains terminal size and allows draw operations.
     /// Needs to pass a `fmt` instance for drawing and event polling.
     /// The function will panic if memory is insufficient.
-    pub fn init(fmt: *f.Fmt, allocator: std.mem.Allocator, margin: t.Unit) Canvas {
-        var size: std.posix.winsize = undefined;
-        const ret = std.posix.system.ioctl(fmt.handle, std.posix.T.IOCGWINSZ, @intFromPtr(&size));
+    pub fn init(allocator: std.mem.Allocator, margin: t.Unit) Canvas {
+        const term_size = config.getSize();
 
-        // TODO: Review appraoch: NOT HANDLING ERROR BUT CREATING ARBITRARY CANVAS
-        const term_r: t.Unit = if (ret != 0) 10 else size.row;
-        const term_c: t.Unit = if (ret != 0) 10 else size.col;
-
-        const total_cells: usize = term_r * term_c;
-
+        const total_cells: usize = term_size.rows * term_size.cols;
         const bb = allocator.alloc(t.Cell, total_cells) catch {
             const needed_size = total_cells * @sizeOf(t.Cell) * 2 + 2;
             std.log.err("Out of memory: {d} is needed!\n", .{needed_size});
@@ -256,12 +264,14 @@ pub const Canvas = struct {
         };
 
         return .{
-            .fmt = fmt,
-            .rows = term_r,
-            .cols = term_c,
+            .allocator = allocator,
+            .rows = term_size.rows,
+            .cols = term_size.cols,
             .back_buffer = bb,
             .front_buffer = fb,
             .margin = margin,
+            .terminal_state = config.prod(),
+            .children = .{},
         };
     }
 
@@ -275,23 +285,13 @@ pub const Canvas = struct {
         return self.cols - self.margin;
     }
 
+    /// Use this function if you want Canvas width with margin consideration.
+    pub fn getCenter(self: *const Canvas) t.Point {
+        return .{ .col = self.getCol() / 2, .row = self.getRow() / 2 };
+    }
+
     /// Disables (currently: ECHO, ICANON) flags for terminal,
     /// returns original instance for restoring original state at the end of program.
-    pub fn enableRaw(self: *const Canvas) !std.posix.termios {
-        const original = try std.posix.tcgetattr(self.fmt.handle);
-
-        var raw = original;
-        raw.lflag.ECHO = false;
-        raw.lflag.ICANON = false;
-
-        try std.posix.tcsetattr(self.fmt.handle, .FLUSH, raw);
-        return original;
-    }
-
-    pub fn disableRaw(self: *const Canvas, original: std.posix.termios) void {
-        std.posix.tcsetattr(self.fmt.handle, .FLUSH, original) catch {};
-    }
-
     pub fn clearScreen(self: *Canvas) void {
         @memset(self.back_buffer, .{});
     }
@@ -302,9 +302,11 @@ pub const Canvas = struct {
     }
 
     /// Destroy the allocated safe for graceful exit of program and prevent memory leaks.
-    pub fn deinit(self: *Canvas, allocator: std.mem.Allocator) void {
-        allocator.free(self.back_buffer);
-        allocator.free(self.front_buffer);
+    pub fn deinit(self: *Canvas) void {
+        self.children.deinit();
+        self.allocator.free(self.back_buffer);
+        self.allocator.free(self.front_buffer);
+        config.end_prod(self.terminal_state);
     }
 
     pub fn log(self: *const Canvas) void {
