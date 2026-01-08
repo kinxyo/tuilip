@@ -9,16 +9,10 @@ pub fn main() !void {
     var cv: tui.Canvas = .init(allocator, 0);
     defer cv.deinit();
 
-    // TODO: Use `cv.children.addBox()` instead.
-    try cv.createBox("world", 10, 10, .center, .center); // TODO: use this function for insertBox too.
+    try cv.createBox("world", 10, 10, .center, .center);
 
-    var world = try cv.children.getBox("world");
-    // TODO: reduce the size -- use direct params honestly, but also offer a clubbed struct (size x pos) instead of separate structs for them.
-    try world.insertBox(
-        "char",
-        .{ .height = 5, .width = 5 },
-        .{ .col = 1, .row = 1 },
-    );
+    var world = try cv.getBox("world");
+    try world.insertBox("char", 5, 5, .center, .center);
 
     try cv.onScreen(world, .draw);
     cv.render();

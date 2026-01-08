@@ -6,6 +6,7 @@ pub const Box = struct {
     allocator: std.mem.Allocator,
     origin: t.Point,
     height: t.Unit = 1,
+    margin: t.Unit = 0,
     width: t.Unit = 1,
     zindex: usize = 1,
     /// children are lazy init
@@ -39,8 +40,24 @@ pub const Box = struct {
 
     /// To insert `Box` widget in the container.
     /// The position is calculated internally; relative to the parent's boundary.
-    pub fn insertBox(self: *Box, id: []const u8, size: t.Size, pos: t.Point) !void {
-        try self.insertBoxCS(id, size, self.calcalatePos(pos));
+    pub fn insertBoxAt(self: *Box, id: []const u8, height: t.Unit, weight: t.Unit, col: t.Unit, row: t.Unit) !void {
+        try self.insertBoxCS(id, .{ .height = height, .width = weight }, self.calcalatePos(.{ .row = row, .col = col }));
+    }
+
+    pub fn insertBox(self: *Box, id: []const u8, height: t.Unit, weight: t.Unit, yaxis: t.YAxis, xaxis: t.XAxis) !void {
+        const row = switch (yaxis) {
+            .up => self.origin.row,
+            .down => self.origin.row - self.height,
+            .center => self.origin.row / 2 - self.height / 2,
+        };
+
+        const col = switch (xaxis) {
+            .left => self.origin.col,
+            .right => self.origin.col - self.width,
+            .center => self.origin.col / 2 - self.width / 2,
+        };
+
+        try self.insertBoxCS(id, .{ .height = height, .width = weight }, self.calcalatePos(.{ .row = row, .col = col }));
     }
 
     /// To insert Text widget in the container.
