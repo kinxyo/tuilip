@@ -1,5 +1,6 @@
 pub const colors = @import("color_types.zig");
 pub const Box = @import("box.zig").Box;
+pub const WidgetList = @import("widgets.zig").WidgetList;
 
 /// Type assertion for measuring unit of position.
 pub const Unit = u16;
@@ -29,12 +30,6 @@ pub const Cell = struct {
 pub const Point = struct {
     row: Unit,
     col: Unit,
-};
-
-/// Struct representing Movement relative to arbitrary point (row x col)
-pub const ArbPoint = struct {
-    row: f32,
-    col: f32,
 };
 
 /// Struct representing Size (width x height)
