@@ -1,26 +1,21 @@
 const std = @import("std");
 const tui = @import("tuilip");
 
+// TODO: better drawing and position.
+
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // init
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var cv: tui.Canvas = .init(allocator, 0);
-    defer cv.deinit();
+    var c: tui.Canvas = try .init(allocator);
+    defer c.deinit();
 
-    try cv.createBox("world", 10, 10, .center, .center);
+    // configs
+    std.debug.print("{d}\n", .{c.T.getCol()});
+    std.debug.print("{d}\n", .{c.T.getRow()});
 
-    var world = try cv.getBox("world");
-    try world.insertBox("char", 5, 5, .center, .center);
-
-    try cv.onScreen(world, .draw);
-    cv.render();
-
-    while (cv.poll()) |event| {
-        if (event == 'q') break;
-        const pos = cv.getCenter(1); // offset
-        try cv.draw(pos.col, pos.row, event);
-        cv.render();
-    }
+    // render loop
+    std.Thread.sleep(std.time.ns_per_s * 3);
 }
