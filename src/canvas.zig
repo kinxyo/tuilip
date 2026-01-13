@@ -5,6 +5,10 @@ const Terminal = @import("terminal.zig");
 const Cell = @import("cell.zig");
 const Allocator = std.mem.Allocator;
 
+const CanvasError = error{
+    ExceedsScreenSize,
+};
+
 pub const Canvas = @This();
 
 allocator: Allocator,
@@ -14,9 +18,10 @@ bb: []Cell,
 
 // === Primitives ===
 
-pub fn drawCS(self: *Canvas, col: t.Unit, row: t.Unit) void {
+pub fn drawCS(self: *Canvas, col: t.Unit, row: t.Unit, bg: t.Bg, fg: t.Fg, char: t.Unicode) CanvasError!void {
     const index = self.T.getCol() * row + col;
-    self.bb[index] = .{ .char = '*' };
+    if (self.bb.len < index) return error.ExceedsScreenSize;
+    self.bb[index] = .{ .char = char, .bg = bg, .fg = fg };
 }
 
 pub fn render(self: *Canvas) void {
@@ -35,8 +40,19 @@ pub fn render(self: *Canvas) void {
 }
 
 pub fn poll(self: *Canvas) ?u8 {
+    // _ = self;
     self.render();
     return io.inputChar() catch null;
+}
+
+// === Wrappers ===
+
+pub fn draw(self: *Canvas, col: t.Unit, row: t.Unit, char: t.Unicode) CanvasError!void {
+    return self.drawCS(col, row, .default, .default, char);
+}
+
+pub fn clear(self: *Canvas, col: t.Unit, row: t.Unit) void {
+    return self.drawCS(col, row, .default, .default, ' ') catch {};
 }
 
 // === Config ===
