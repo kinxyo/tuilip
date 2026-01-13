@@ -1,22 +1,11 @@
 const std = @import("std");
 const io = @import("io.zig");
-const t = @import("types.zig");
 
 const Terminal = @This();
 
 handle: std.fs.File.Handle,
 size: std.posix.winsize = undefined,
 original_state: std.posix.termios = undefined,
-
-// ===================
-
-pub fn getCol(self: *Terminal) t.Unit {
-    return self.size.col;
-}
-
-pub fn getRow(self: *Terminal) t.Unit {
-    return self.size.row;
-}
 
 // ===================
 
@@ -28,7 +17,7 @@ pub fn init(hn: std.fs.File.Handle) !Terminal {
     return term;
 }
 
-pub fn setSize(self: *Terminal) t.UnxpErr!void {
+pub fn setSize(self: *Terminal) std.posix.UnexpectedError!void {
     const hn = self.handle;
     const cmd = std.posix.T.IOCGWINSZ;
     const ptr = @intFromPtr(&self.size);

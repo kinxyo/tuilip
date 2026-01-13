@@ -12,26 +12,28 @@ pub fn main() !void {
     var cv: tui.Canvas = try .init(allocator);
     defer cv.deinit();
 
-    var pos_x: i32 = 20;
-    var pos_y: i32 = 10;
-
     // define
-    const pixel: tui.Cell = .{ .char = '*' };
+    const pixel: tui.Cell = .{ .char = '*', .fg = .red };
+    var pos: tui.P.Delta = .{ .col = 20, .row = 10 };
 
-    // initial render (before polling for input).
-    try cv.renderBounded(pixel, pos_x, pos_y, .draw);
+    const str: tui.Text = .{ .value = "Press any key to start and `q` to exit." };
+    try cv.render(str, cv.getCenterOffsetX(-str.lenHalf()), .draw);
+
+    cv.flush();
+    if (cv.pollOnly() == 'q') return;
+    try cv.render(str, cv.getCenterOffsetX(-str.lenHalf()), .erase);
 
     // render loop
     while (cv.poll()) |event| {
-        try cv.renderBounded(pixel, pos_x, pos_y, .erase);
+        try cv.renderFit(pixel, pos, .erase);
         switch (event) {
             'q' => break,
-            'w' => pos_y -= 1,
-            'a' => pos_x -= 1,
-            's' => pos_y += 1,
-            'd' => pos_x += 1,
+            'w' => pos.row -= 1,
+            'a' => pos.col -= 1,
+            's' => pos.row += 1,
+            'd' => pos.col += 1,
             else => {},
         }
-        try cv.renderBounded(pixel, pos_x, pos_y, .draw);
+        try cv.renderFit(pixel, pos, .draw);
     }
 }

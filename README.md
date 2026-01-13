@@ -19,14 +19,10 @@ pub fn main() !void {
     var cv: tui.Canvas = try .init(allocator);
     defer cv.deinit();
 
-    var pos_x: i32 = 20;
-    var pos_y: i32 = 10;
-
     // define
     const pixel: tui.Cell = .{ .char = '*' };
-
-    // initial render (before polling for input).
-    try cv.renderBounded(pixel, pos_x, pos_y, .draw);
+    var pos_x: i32 = 20;
+    var pos_y: i32 = 10;
 
     // render loop
     while (cv.poll()) |event| {

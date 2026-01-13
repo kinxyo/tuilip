@@ -1,8 +1,9 @@
+//! Cell widget definitiion
 const std = @import("std");
-const t = @import("types.zig");
+const io = @import("io.zig");
 
-const Cell = @This();
+pub const Cell = @This();
 
-bg: t.Bg = .default,
-fg: t.Fg = .default,
-char: t.Unicode = ' ',
+bg: io.Bg = .default,
+fg: io.Fg = .default,
+char: u21 = ' ',

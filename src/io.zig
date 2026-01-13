@@ -1,3 +1,4 @@
+//! I/O micro library
 const std = @import("std");
 
 var buf_w: [4096]u8 = undefined;
@@ -49,3 +50,14 @@ pub fn mouse_hide() void {
 pub fn mouse_show() void {
     print("\x1b[?25h");
 }
+
+// -----------
+
+pub const Bg = enum(u8) {
+    default = 39,
+};
+
+pub const Fg = enum(u8) {
+    red = 31,
+    default = 39,
+};

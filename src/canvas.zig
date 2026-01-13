@@ -1,8 +1,9 @@
 const std = @import("std");
 const io = @import("io.zig");
-const t = @import("types.zig");
-const Terminal = @import("terminal.zig");
+const p = @import("position.zig");
 const Cell = @import("cell.zig");
+const Text = @import("text.zig");
+const Terminal = @import("terminal.zig");
 const Allocator = std.mem.Allocator;
 
 const CanvasError = error{
@@ -18,10 +19,19 @@ bb: []Cell,
 
 // === Primitives ===
 
+pub fn createTextCS(self: *const Canvas, comptime str: []const u8, bg: io.Bg, fg: io.Fg) ![]Cell {
+    const text = try self.allocator.alloc(Cell, str.len);
+
+    for (text, 0..) |*c, i| {
+        c.* = .{ .char = str[i], .bg = bg, .fg = fg };
+    }
+    return text;
+}
+
 pub fn flush(self: *Canvas) void {
     for (0..self.bb.len) |idx| {
         if (!std.meta.eql(self.fb[idx], self.bb[idx])) {
-            const width = self.T.getCol();
+            const width = self.getCol();
             const row = idx / width;
             const col = idx % width;
 
@@ -50,31 +60,86 @@ const Mode = enum {
     erase,
 };
 
-pub fn render(self: *Canvas, widget: anytype, col: t.Unit, row: t.Unit, m: Mode) CanvasError!void {
+/// Draws given widget on backbuffer at given position.
+pub fn render(self: *Canvas, widget: anytype, position: p.Origin, m: Mode) CanvasError!void {
     switch (@TypeOf(widget)) {
-        Cell => try self.drawCell(col, row, widget, m),
+        Cell => try self.drawCell(position.col, position.row, widget, m),
+        Text => try self.drawText(position.col, position.row, widget, m),
         else => @compileError("Unsupported widget."),
     }
 }
 
 // === Wrappers ===
 
-pub fn renderBounded(self: *Canvas, widget: anytype, col: i32, row: i32, m: Mode) CanvasError!void {
-    const c: t.Unit = @intCast(std.math.clamp(col, 0, self.T.getCol() - 1));
-    const r: t.Unit = @intCast(std.math.clamp(row, 0, self.T.getRow() - 1));
+/// Draws given widget on backbuffer at given position, but is bounded within the canvas size.
+/// If given position exceed canvas size then it's automatically clamped.
+pub fn renderFit(self: *Canvas, widget: anytype, position: p.Delta, m: Mode) CanvasError!void {
+    const c: p.Unit = @intCast(std.math.clamp(position.col, 0, self.getCol() - 1));
+    const r: p.Unit = @intCast(std.math.clamp(position.row, 0, self.getRow() - 1));
 
-    try self.render(widget, c, r, m);
+    try self.render(widget, .{ .col = c, .row = r }, m);
+}
+
+pub fn getCol(self: *const Canvas) p.Unit {
+    return self.T.size.col;
+}
+
+pub fn getRow(self: *const Canvas) p.Unit {
+    return self.T.size.row;
+}
+
+// Returns Co-ordinates for center position.
+pub fn getCenter(self: *const Canvas) p.Origin {
+    return self.getCenterWithOffsets(.{ .col = 0, .row = 0 });
+}
+
+// Returns Co-ordinates for center position with Offset for both axis.
+pub fn getCenterWithOffsets(self: *const Canvas, offset: p.Delta) p.Origin {
+    const c = @as(i16, @intCast(self.getCol() / 2)) + offset.col;
+    const r = @as(i16, @intCast(self.getRow() / 2)) + offset.row;
+    return .{
+        .col = @intCast(c),
+        .row = @intCast(r),
+    };
+}
+
+// Returns Co-ordinates for center position with Offset for X axis.
+pub fn getCenterOffsetX(self: *const Canvas, offset_col: p.Offset) p.Origin {
+    return self.getCenterWithOffsets(.{ .col = offset_col, .row = 0 });
+}
+
+// Returns Co-ordinates for center position with Offset for Y axis.
+pub fn getCenterOffsetY(self: *const Canvas, offset_row: p.Offset) p.Origin {
+    return self.getCenterWithOffsets(.{ .col = 0, .row = offset_row });
 }
 
 // === Implementation ===
 
-pub fn drawCell(self: *Canvas, col: t.Unit, row: t.Unit, c: Cell, m: Mode) CanvasError!void {
-    const index = self.T.getCol() * row + col;
+pub fn drawCell(self: *Canvas, col: p.Unit, row: p.Unit, c: Cell, m: Mode) CanvasError!void {
+    const index = self.getCol() * row + col;
     if (self.bb.len <= index) return error.ExceedsScreenSize;
 
     switch (m) {
         .draw => self.bb[index] = c,
         .erase => self.bb[index] = .{ .char = ' ' },
+    }
+}
+
+pub fn drawText(self: *Canvas, col: p.Unit, row: p.Unit, text: Text, m: Mode) CanvasError!void {
+    const index = self.getCol() * row + col;
+    if (self.bb.len <= index + text.value.len) return error.ExceedsScreenSize;
+
+    switch (m) {
+        .draw => {
+            for (text.value, 0..) |char, idx| {
+                self.bb[index + idx] = .{ .char = char };
+            }
+        },
+        .erase => {
+            for (0..text.value.len) |idx| {
+                self.bb[index + idx] = .{ .char = ' ' };
+            }
+        },
     }
 }
 
