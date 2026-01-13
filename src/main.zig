@@ -9,13 +9,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var c: tui.Canvas = try .init(allocator);
-    defer c.deinit();
+    var cv: tui.Canvas = try .init(allocator);
+    defer cv.deinit();
 
     // configs
-    std.debug.print("{d}\n", .{c.T.getCol()});
-    std.debug.print("{d}\n", .{c.T.getRow()});
+    cv.drawCS(20, 10);
 
     // render loop
-    std.Thread.sleep(std.time.ns_per_s * 3);
+    while (cv.poll()) |event| {
+        if (event == 'q') break;
+    }
 }

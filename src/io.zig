@@ -32,6 +32,10 @@ pub fn flush() void {
     writer.flush() catch {};
 }
 
+pub fn inputChar() !u8 {
+    return reader.takeByte();
+}
+
 // -----------
 
 pub fn screen_clear() void {
