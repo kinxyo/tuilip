@@ -12,15 +12,15 @@ pub fn main() !void {
     var cv: tui.Canvas = try .init(allocator);
     defer cv.deinit();
 
-    var pos_x: tui.Unit = 20;
-    var pos_y: tui.Unit = 10;
+    var pos_x: i32 = 20;
+    var pos_y: i32 = 10;
 
     // configs
-    try cv.draw(pos_x, pos_y, '*');
+    cv.drawBounded(pos_x, pos_y, '*');
 
     // render loop
     while (cv.poll()) |event| {
-        cv.clear(pos_x, pos_y);
+        cv.clearBounded(pos_x, pos_y);
         switch (event) {
             'q' => break,
             'd' => pos_x += 1,
@@ -29,6 +29,7 @@ pub fn main() !void {
             's' => pos_y += 1,
             else => {},
         }
-        try cv.draw(pos_x, pos_y, '*');
+        // TODO: can create a redraw function that clears the previous stuff that draws the new function automatically, possible take function function as input;
+        cv.drawBounded(pos_x, pos_y, '*');
     }
 }

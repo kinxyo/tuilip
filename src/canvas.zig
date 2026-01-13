@@ -18,6 +18,16 @@ bb: []Cell,
 
 // === Primitives ===
 
+pub fn drawBoundedCS(self: *Canvas, col: i32, row: i32, bg: t.Bg, fg: t.Fg, char: t.Unicode) void {
+    const t_col = self.T.getCol();
+    const t_row = self.T.getRow();
+
+    const c: t.Unit = @intCast(std.math.clamp(col, 0, t_col - 1));
+    const r: t.Unit = @intCast(std.math.clamp(row, 0, t_row - 1));
+
+    self.drawCS(c, r, bg, fg, char) catch unreachable;
+}
+
 pub fn drawCS(self: *Canvas, col: t.Unit, row: t.Unit, bg: t.Bg, fg: t.Fg, char: t.Unicode) CanvasError!void {
     const index = self.T.getCol() * row + col;
     if (self.bb.len < index) return error.ExceedsScreenSize;
@@ -55,15 +65,20 @@ pub fn clear(self: *Canvas, col: t.Unit, row: t.Unit) void {
     return self.drawCS(col, row, .default, .default, ' ') catch {};
 }
 
+pub fn drawBounded(self: *Canvas, col: i32, row: i32, char: t.Unicode) void {
+    return self.drawBoundedCS(col, row, .default, .default, char);
+}
+
+pub fn clearBounded(self: *Canvas, col: i32, row: i32) void {
+    return self.drawBoundedCS(col, row, .default, .default, ' ');
+}
+
 // === Config ===
 
 pub fn init(allocator: Allocator) !Canvas {
     const term: Terminal = try .init(io.getHandle());
 
     const size: usize = term.size.col * term.size.row;
-
-    const buf = try allocator.alloc(Cell, size);
-    defer allocator.free(buf);
 
     return .{
         .allocator = allocator,
