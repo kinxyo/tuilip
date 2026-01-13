@@ -15,21 +15,23 @@ pub fn main() !void {
     var pos_x: i32 = 20;
     var pos_y: i32 = 10;
 
-    // configs
-    cv.drawBounded(pos_x, pos_y, '*');
+    // define
+    const pixel: tui.Cell = .{ .char = '*' };
+
+    // initial render (before polling for input).
+    try cv.renderBounded(pixel, pos_x, pos_y, .draw);
 
     // render loop
     while (cv.poll()) |event| {
-        cv.clearBounded(pos_x, pos_y);
+        try cv.renderBounded(pixel, pos_x, pos_y, .erase);
         switch (event) {
             'q' => break,
-            'd' => pos_x += 1,
-            'a' => pos_x -= 1,
             'w' => pos_y -= 1,
+            'a' => pos_x -= 1,
             's' => pos_y += 1,
+            'd' => pos_x += 1,
             else => {},
         }
-        // TODO: can create a redraw function that clears the previous stuff that draws the new function automatically, possible take function function as input;
-        cv.drawBounded(pos_x, pos_y, '*');
+        try cv.renderBounded(pixel, pos_x, pos_y, .draw);
     }
 }
