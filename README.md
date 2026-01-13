@@ -23,20 +23,23 @@ pub fn main() !void {
     var pos_y: i32 = 10;
 
     // define
-    cv.drawBounded(pos_x, pos_y, '*');
+    const pixel: tui.Cell = .{ .char = '*' };
+
+    // initial render (before polling for input).
+    try cv.renderBounded(pixel, pos_x, pos_y, .draw);
 
     // render loop
     while (cv.poll()) |event| {
-        cv.clearBounded(pos_x, pos_y);
+        try cv.renderBounded(pixel, pos_x, pos_y, .erase);
         switch (event) {
             'q' => break,
-            'd' => pos_x += 1,
-            'a' => pos_x -= 1,
             'w' => pos_y -= 1,
+            'a' => pos_x -= 1,
             's' => pos_y += 1,
+            'd' => pos_x += 1,
             else => {},
         }
-        cv.drawBounded(pos_x, pos_y, '*');
+        try cv.renderBounded(pixel, pos_x, pos_y, .draw);
     }
 }
 ```
