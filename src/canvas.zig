@@ -8,6 +8,9 @@ const Allocator = std.mem.Allocator;
 
 const CanvasError = error{
     ExceedsScreenSize,
+    RowOutOfBounds,
+    ColOutOfBounds,
+    InvalidShape,
 };
 
 pub const Canvas = @This();
@@ -61,7 +64,7 @@ const Mode = enum {
 };
 
 /// Draws given widget on backbuffer at given position.
-pub fn render(self: *Canvas, widget: anytype, position: p.Origin, m: Mode) CanvasError!void {
+pub fn renderCS(self: *Canvas, widget: anytype, position: p.Origin, m: Mode) CanvasError!void {
     switch (@TypeOf(widget)) {
         Cell => try self.drawCell(position.col, position.row, widget, m),
         Text => try self.drawText(position.col, position.row, widget, m),
@@ -77,15 +80,15 @@ pub fn renderFit(self: *Canvas, widget: anytype, position: p.Delta, m: Mode) Can
     const c: p.Unit = @intCast(std.math.clamp(position.col, 0, self.getCol() - 1));
     const r: p.Unit = @intCast(std.math.clamp(position.row, 0, self.getRow() - 1));
 
-    try self.render(widget, .{ .col = c, .row = r }, m);
+    try self.renderCS(widget, .{ .col = c, .row = r }, m);
 }
 
 pub fn getCol(self: *const Canvas) p.Unit {
-    return self.T.size.col;
+    return self.T.size.ux;
 }
 
 pub fn getRow(self: *const Canvas) p.Unit {
-    return self.T.size.row;
+    return self.T.size.uy;
 }
 
 // Returns Co-ordinates for center position.
@@ -117,7 +120,11 @@ pub fn getCenterOffsetY(self: *const Canvas, offset_row: p.Offset) p.Origin {
 
 pub fn drawCell(self: *Canvas, col: p.Unit, row: p.Unit, c: Cell, m: Mode) CanvasError!void {
     const index = self.getCol() * row + col;
-    if (self.bb.len <= index) return error.ExceedsScreenSize;
+    if (self.bb.len <= index) {
+        if (col >= self.getCol()) return error.ColOutOfBounds;
+        if (row >= self.getRow()) return error.RowOutOfBounds;
+        unreachable;
+    }
 
     switch (m) {
         .draw => self.bb[index] = c,
@@ -127,7 +134,11 @@ pub fn drawCell(self: *Canvas, col: p.Unit, row: p.Unit, c: Cell, m: Mode) Canva
 
 pub fn drawText(self: *Canvas, col: p.Unit, row: p.Unit, text: Text, m: Mode) CanvasError!void {
     const index = self.getCol() * row + col;
-    if (self.bb.len <= index + text.value.len) return error.ExceedsScreenSize;
+    if (self.bb.len <= index) {
+        if (col >= self.getCol()) return error.ColOutOfBounds;
+        if (row >= self.getRow()) return error.RowOutOfBounds;
+        unreachable;
+    }
 
     switch (m) {
         .draw => {
@@ -148,7 +159,7 @@ pub fn drawText(self: *Canvas, col: p.Unit, row: p.Unit, text: Text, m: Mode) Ca
 pub fn init(allocator: Allocator) !Canvas {
     const term: Terminal = try .init(io.getHandle());
 
-    const size: usize = term.size.col * term.size.row;
+    const size: usize = term.size.ux * term.size.uy;
 
     return .{
         .allocator = allocator,
