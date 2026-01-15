@@ -63,7 +63,7 @@ const Mode = enum {
     erase,
 };
 
-/// Draws given widget on backbuffer at given position.
+/// Draws/Erases given widget on backbuffer at given position.
 pub fn renderCS(self: *Canvas, widget: anytype, position: p.UnitGroup, m: Mode) CanvasError!void {
     switch (@TypeOf(widget)) {
         Cell => try self.drawCell(position.col, position.row, widget, m),
@@ -74,14 +74,27 @@ pub fn renderCS(self: *Canvas, widget: anytype, position: p.UnitGroup, m: Mode) 
 
 // === Wrappers ===
 
-/// Draws given widget on backbuffer at given position, but is bounded within the canvas size.
+/// Draws/Erases given widget on backbuffer at given position, but is bounded within the canvas size.
 /// If given position exceed canvas size then it's automatically clamped.
 pub fn renderFit(self: *Canvas, widget: anytype, position: p.OffsetGroup, m: Mode) CanvasError!void {
-    const c: p.Unit = @intCast(std.math.clamp(position.col, 0, self.getCol() - 1));
-    const r: p.Unit = @intCast(std.math.clamp(position.row, 0, self.getRow() - 1));
+    const new_col: p.Unit = @intCast(std.math.clamp(position.col, 0, self.getCol() - 1));
+    const new_row: p.Unit = @intCast(std.math.clamp(position.row, 0, self.getRow() - 1));
 
-    try self.renderCS(widget, .{ .col = c, .row = r }, m);
+    try self.renderCS(widget, .{ .col = new_col, .row = new_row }, m);
 }
+
+/// Draws given widget on backbuffer at wanted position, when accuracy doesn't matter.
+/// Returns coords of the position determined, so that erasure can be accurate
+pub fn renderAlign(self: *Canvas, widget: anytype, h: p.HAlign, v: p.VAlign) CanvasError!p.UnitGroup {
+    var coords = self.T.size.getCoords(h, v);
+    if (h == .right) coords.col -= widget.len(); // reduce shift for left align.
+    if (h == .center) coords.col -= widget.len() / 2; // reduce shift for center align.
+
+    try self.renderCS(widget, coords, .draw);
+    return coords;
+}
+
+// --- POSITIONING WRAPPERS ---
 
 pub fn getCol(self: *const Canvas) p.Unit {
     return self.T.size.cols;
@@ -93,27 +106,12 @@ pub fn getRow(self: *const Canvas) p.Unit {
 
 // Returns Co-ordinates for center position.
 pub fn getCenter(self: *const Canvas) p.UnitGroup {
-    return self.getCenterWithOffsets(.{ .col = 0, .row = 0 });
+    return self.T.size.getCenter(0, 0, .reduce);
 }
 
 // Returns Co-ordinates for center position with Offset for both axis.
-pub fn getCenterWithOffsets(self: *const Canvas, offset: p.OffsetGroup) p.UnitGroup {
-    const c = @as(i16, @intCast(self.getCol() / 2)) + offset.col;
-    const r = @as(i16, @intCast(self.getRow() / 2)) + offset.row;
-    return .{
-        .col = @intCast(c),
-        .row = @intCast(r),
-    };
-}
-
-// Returns Co-ordinates for center position with Offset for X axis.
-pub fn getCenterOffsetX(self: *const Canvas, offset_col: p.Offset) p.UnitGroup {
-    return self.getCenterWithOffsets(.{ .col = offset_col, .row = 0 });
-}
-
-// Returns Co-ordinates for center position with Offset for Y axis.
-pub fn getCenterOffsetY(self: *const Canvas, offset_row: p.Offset) p.UnitGroup {
-    return self.getCenterWithOffsets(.{ .col = 0, .row = offset_row });
+pub fn getCenterWithOffsets(self: *const Canvas, offset_col: p.Unit, offset_row: p.Unit, offset_type: p.OffsetType) p.UnitGroup {
+    return self.T.size.getCenter(offset_col, offset_row, offset_type);
 }
 
 // === Implementation ===

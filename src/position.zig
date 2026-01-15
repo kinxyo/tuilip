@@ -2,16 +2,10 @@ pub const Unit = u16;
 pub const Offset = i16;
 pub const UnitGroup = struct { col: Unit, row: Unit };
 pub const OffsetGroup = struct { col: Offset, row: Offset };
-const OffsetType = enum { reduce, add };
+pub const OffsetType = enum { reduce, add };
 
-pub const Align = enum {
-    TopLeft,
-    TopCenter,
-    TopRight,
-    BottomLeft,
-    BottomCenter,
-    BottomRight,
-};
+pub const VAlign = enum { top, center, bottom };
+pub const HAlign = enum { left, center, right };
 
 pub const Size = struct {
     origin: UnitGroup = .{ .col = 0, .row = 0 },
@@ -36,7 +30,22 @@ pub const Size = struct {
         return point;
     }
 
-    // TODO
-    // pub fn nearestLeft(bb: []Cell) void {}
-    // etc...
+    /// Get coords based on alignment enum.
+    pub fn getCoords(self: *const Size, h: HAlign, v: VAlign) UnitGroup {
+        var point: UnitGroup = undefined;
+
+        // TODO: THIS NEEDS TO ACCOUNT FOR COLLISION DETECTION (NOT OVERWRITING ON EXISTING DRAWING THERE).
+        switch (v) {
+            .top => point.row = self.origin.row,
+            .bottom => point.row = self.rows - 1,
+            .center => point.row = self.rows / 2,
+        }
+        switch (h) {
+            .left => point.col = self.origin.col,
+            .right => point.col = self.cols,
+            .center => point.col = self.cols / 2,
+        }
+
+        return point;
+    }
 };

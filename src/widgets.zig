@@ -13,3 +13,7 @@ const WidgetTypes = union(enum) {
     text: Text,
     box: Box,
 };
+
+// ~~ Widget Interface ~~
+
+// len() int

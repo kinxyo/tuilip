@@ -12,7 +12,6 @@ value: []const u8,
 bg: io.Bg = .default,
 fg: io.Fg = .default,
 
-/// Returns half of text length in integer type to be passed in offset function.
-pub fn lenHalf(self: *const Text) p.Offset {
-    return @intCast(self.value.len / 2);
+pub fn len(self: *const Text) p.Unit {
+    return @intCast(self.value.len);
 }
