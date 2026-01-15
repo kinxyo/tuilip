@@ -22,8 +22,8 @@ pub const Size = struct {
                 point.row = self.rows / 2 - offset_row;
             },
             .add => {
-                point.col = self.cols / 2 - offset_col;
-                point.row = self.rows / 2 - offset_row;
+                point.col = self.cols / 2 + offset_col;
+                point.row = self.rows / 2 + offset_row;
             },
         }
 
