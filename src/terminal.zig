@@ -26,7 +26,7 @@ pub fn setSize(self: *Terminal) std.posix.UnexpectedError!void {
     const ptr = @intFromPtr(&size);
     const return_code = std.posix.system.ioctl(hn, cmd, ptr);
 
-    self.size = .{ .ux = size.col, .uy = size.row };
+    self.size = .{ .cols = size.col, .rows = size.row };
 
     if (return_code != 0) return std.posix.unexpectedErrno(std.posix.errno(return_code));
 }

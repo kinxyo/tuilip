@@ -64,7 +64,7 @@ const Mode = enum {
 };
 
 /// Draws given widget on backbuffer at given position.
-pub fn renderCS(self: *Canvas, widget: anytype, position: p.Origin, m: Mode) CanvasError!void {
+pub fn renderCS(self: *Canvas, widget: anytype, position: p.UnitGroup, m: Mode) CanvasError!void {
     switch (@TypeOf(widget)) {
         Cell => try self.drawCell(position.col, position.row, widget, m),
         Text => try self.drawText(position.col, position.row, widget, m),
@@ -76,7 +76,7 @@ pub fn renderCS(self: *Canvas, widget: anytype, position: p.Origin, m: Mode) Can
 
 /// Draws given widget on backbuffer at given position, but is bounded within the canvas size.
 /// If given position exceed canvas size then it's automatically clamped.
-pub fn renderFit(self: *Canvas, widget: anytype, position: p.Delta, m: Mode) CanvasError!void {
+pub fn renderFit(self: *Canvas, widget: anytype, position: p.OffsetGroup, m: Mode) CanvasError!void {
     const c: p.Unit = @intCast(std.math.clamp(position.col, 0, self.getCol() - 1));
     const r: p.Unit = @intCast(std.math.clamp(position.row, 0, self.getRow() - 1));
 
@@ -84,20 +84,20 @@ pub fn renderFit(self: *Canvas, widget: anytype, position: p.Delta, m: Mode) Can
 }
 
 pub fn getCol(self: *const Canvas) p.Unit {
-    return self.T.size.ux;
+    return self.T.size.cols;
 }
 
 pub fn getRow(self: *const Canvas) p.Unit {
-    return self.T.size.uy;
+    return self.T.size.rows;
 }
 
 // Returns Co-ordinates for center position.
-pub fn getCenter(self: *const Canvas) p.Origin {
+pub fn getCenter(self: *const Canvas) p.UnitGroup {
     return self.getCenterWithOffsets(.{ .col = 0, .row = 0 });
 }
 
 // Returns Co-ordinates for center position with Offset for both axis.
-pub fn getCenterWithOffsets(self: *const Canvas, offset: p.Delta) p.Origin {
+pub fn getCenterWithOffsets(self: *const Canvas, offset: p.OffsetGroup) p.UnitGroup {
     const c = @as(i16, @intCast(self.getCol() / 2)) + offset.col;
     const r = @as(i16, @intCast(self.getRow() / 2)) + offset.row;
     return .{
@@ -107,12 +107,12 @@ pub fn getCenterWithOffsets(self: *const Canvas, offset: p.Delta) p.Origin {
 }
 
 // Returns Co-ordinates for center position with Offset for X axis.
-pub fn getCenterOffsetX(self: *const Canvas, offset_col: p.Offset) p.Origin {
+pub fn getCenterOffsetX(self: *const Canvas, offset_col: p.Offset) p.UnitGroup {
     return self.getCenterWithOffsets(.{ .col = offset_col, .row = 0 });
 }
 
 // Returns Co-ordinates for center position with Offset for Y axis.
-pub fn getCenterOffsetY(self: *const Canvas, offset_row: p.Offset) p.Origin {
+pub fn getCenterOffsetY(self: *const Canvas, offset_row: p.Offset) p.UnitGroup {
     return self.getCenterWithOffsets(.{ .col = 0, .row = offset_row });
 }
 
@@ -159,7 +159,7 @@ pub fn drawText(self: *Canvas, col: p.Unit, row: p.Unit, text: Text, m: Mode) Ca
 pub fn init(allocator: Allocator) !Canvas {
     const term: Terminal = try .init(io.getHandle());
 
-    const size: usize = term.size.ux * term.size.uy;
+    const size: usize = term.size.cols * term.size.rows;
 
     return .{
         .allocator = allocator,
