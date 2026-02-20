@@ -9,6 +9,13 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const examples = b.addModule("examples/", .{
+        .root_source_file = b.path("examples/examples.zig"),
+        .target = target,
+    });
+
+    examples.addImport("tuilip", mod);
+
     const exe = b.addExecutable(.{
         .name = "til",
         .root_module = b.createModule(.{
@@ -17,6 +24,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "tuilip", .module = mod },
+                .{ .name = "examples", .module = examples },
             },
         }),
     });

@@ -12,6 +12,10 @@ value: []const u8,
 bg: io.Bg = .default,
 fg: io.Fg = .default,
 
+pub fn new(str: []const u8) Text {
+    return .{ .value = str };
+}
+
 pub fn len(self: *const Text) p.Unit {
     return @intCast(self.value.len);
 }

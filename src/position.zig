@@ -8,6 +8,8 @@ pub const VAlign = enum { top, center, bottom };
 pub const HAlign = enum { left, center, right };
 
 pub const Size = struct {
+    /// Position of the element.
+    /// Can be passed as a variable to render methods.
     origin: UnitGroup = .{ .col = 0, .row = 0 },
     cols: Unit,
     rows: Unit,

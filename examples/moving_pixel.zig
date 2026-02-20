@@ -12,9 +12,9 @@ pub fn main() !void {
 
     // define
     const pixel: tui.Cell = .{ .char = '*', .fg = .red };
-    var pos: tui.P.Delta = .{ .col = 20, .row = 10 };
+    var pos: tui.P.OffsetGroup = .{ .col = 20, .row = 10 };
 
-    // render loop
+    // pre-draw loop
     try cv.renderFit(pixel, pos, .draw);
 
     while (cv.poll()) |event| {
