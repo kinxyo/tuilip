@@ -13,9 +13,12 @@ pub fn main() !void {
     var cv: Canvas = try .init(allocator);
     defer cv.deinit();
 
-    const box: tui.Box = .new(10, 15);
-    // cv.render(box, box.size.origin, .draw);
-    cv.renderAlign(box, .center, .center);
+    // const d: tui.Box = .new(50, 10);
+    const d: tui.Cell = .{ .char = 'u' };
+    // const d: tui.Text = .new("welcome.");
+    try cv.renderAlign(d, .center, .center);
 
     cv.present();
+
+    cv.pause(2);
 }

@@ -1,6 +1,5 @@
 //! Terminal I/O micro library
 const std = @import("std");
-const Size = @import("position.zig").Size;
 const Err = std.posix.UnexpectedError;
 
 var buf_w: [4096]u8 = undefined;
@@ -70,7 +69,7 @@ inline fn handle() std.fs.File.Handle {
     return stdin.file.handle;
 }
 
-pub fn getSize() Err!Size {
+pub fn getSize() Err!@import("box.zig") {
     var size: std.posix.winsize = undefined;
 
     const ret = std.posix.system.ioctl(
