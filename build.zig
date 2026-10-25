@@ -9,7 +9,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
-    const examples = b.addModule("examples/", .{
+    const examples = b.addModule("examples", .{
         .root_source_file = b.path("examples/examples.zig"),
         .target = target,
     });
@@ -38,9 +38,7 @@ pub fn build(b: *std.Build) void {
 
     run_cmd.step.dependOn(b.getInstallStep());
 
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
 
     const mod_tests = b.addTest(.{
         .root_module = mod,

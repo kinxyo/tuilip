@@ -1,10 +1,10 @@
 //! Cell widget definitiion
 const std = @import("std");
-const io = @import("io.zig");
+const term = @import("terminal.zig");
 const t = @import("types.zig");
 
 pub const Cell = @This();
 
-bg: io.Bg = .default,
-fg: io.Fg = .default,
+bg: term.Bg = .default,
+fg: term.Fg = .default,
 char: t.Unicode = ' ',

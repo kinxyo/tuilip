@@ -1,14 +1,14 @@
 const std = @import("std");
+const Init = std.process.Init;
 const tui = @import("tuilip");
 const Canvas = tui.Canvas;
 const Text = tui.Text;
 
-pub fn main() !void {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: Init) !void {
+    const io = init.io;
+    const allocator = init.gpa;
 
-    var cv: Canvas = try .init(allocator);
+    var cv: Canvas = try .init(io, allocator);
     defer cv.deinit();
 
     _ = try cv.renderAlign(Text.new("work"), .top, .left);
@@ -16,5 +16,5 @@ pub fn main() !void {
     _ = try cv.renderAlign(Text.new("progress..."), .bottom, .right);
     cv.present();
 
-    std.Thread.sleep(std.time.ns_per_s * 5);
+    try io.sleep(.fromSeconds(5), .awake);
 }

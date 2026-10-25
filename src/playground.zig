@@ -5,12 +5,11 @@ const tui = @import("tuilip");
 const Canvas = tui.Canvas;
 const Text = tui.Text;
 
-pub fn main() !void {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const allocator = init.gpa;
 
-    var cv: Canvas = try .init(allocator);
+    var cv: Canvas = try .init(io, allocator);
     defer cv.deinit();
 
     // const d: tui.Box = .new(50, 10);

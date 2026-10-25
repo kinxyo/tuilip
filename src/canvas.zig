@@ -1,10 +1,9 @@
 const std = @import("std");
-const io = @import("io.zig");
+const term = @import("terminal.zig");
 const t = @import("types.zig");
 const Cell = @import("cell.zig");
 const Text = @import("text.zig");
 const Box = @import("box.zig");
-const Terminal = @import("terminal.zig");
 const Allocator = std.mem.Allocator;
 
 const CanvasError = error{
@@ -16,6 +15,7 @@ const CanvasError = error{
 
 pub const Canvas = @This();
 
+io: std.Io,
 /// allocator
 allocator: Allocator,
 /// metadata (underlying Box; containing size and position)
@@ -36,24 +36,24 @@ pub fn present(self: *Canvas) void {
             const row = idx / width;
             const col = idx % width;
 
-            io.printf("\x1b[{d};{d}m", .{ self.bb[idx].bg, self.bb[idx].fg });
-            io.printf("\x1b[{d};{d}H{u}", .{ row + 1, col + 1, self.bb[idx].char });
-            io.print("\x1b[0m");
+            term.printf("\x1b[{d};{d}m", .{ self.bb[idx].bg, self.bb[idx].fg });
+            term.printf("\x1b[{d};{d}H{u}", .{ row + 1, col + 1, self.bb[idx].char });
+            term.print("\x1b[0m");
             self.fb[idx] = self.bb[idx];
         }
     }
 
-    io.flush();
+    term.flush();
 }
 
 pub fn poll(self: *Canvas) ?u8 {
     self.present();
-    return io.inputChar() catch null;
+    return term.inputChar() catch null;
 }
 
 pub fn pollOnly(self: *Canvas) ?u8 {
     _ = self;
-    return io.inputChar() catch null;
+    return term.inputChar() catch null;
 }
 
 // === Render Methods ===
@@ -182,7 +182,7 @@ pub fn implBox(self: *Canvas, box: Box, m: Mode) CanvasError!void {
 
         char = .SideHzn;
 
-        self.bb[idx] = .{ .char = @intFromEnum(char) };
+        self.bb[idx] = .{ .char = @backingInt(char) };
     }
 
     for (bottomleft..bottomright) |idx| {
@@ -191,7 +191,7 @@ pub fn implBox(self: *Canvas, box: Box, m: Mode) CanvasError!void {
 
         char = .SideHzn;
 
-        self.bb[idx] = .{ .char = @intFromEnum(char) };
+        self.bb[idx] = .{ .char = @backingInt(char) };
     }
 
     // mark points
@@ -200,14 +200,17 @@ pub fn implBox(self: *Canvas, box: Box, m: Mode) CanvasError!void {
 
 // === Config ===
 
-pub fn init(allocator: Allocator) !Canvas {
-    const t_size = try io.getSize();
+pub fn init(io: std.Io, allocator: Allocator) !Canvas {
+    term.init(io);
+
+    const t_size = try term.getSize();
     std.log.debug("size: {}x{}\n", .{ t_size.origin.col, t_size.origin.row });
     const buf_len: usize = t_size.cols * t_size.rows;
 
-    try io.rawEnable();
+    try term.rawEnable();
 
     return .{
+        .io = io,
         .allocator = allocator,
         .body = t_size,
         .fb = try allocator.alloc(Cell, buf_len),
@@ -218,12 +221,11 @@ pub fn init(allocator: Allocator) !Canvas {
 pub fn deinit(self: *const Canvas) void {
     self.allocator.free(self.fb);
     self.allocator.free(self.bb);
-    io.rawDisable();
+    term.rawDisable();
 }
 
 pub fn pause(self: *const Canvas, comptime secs: f32) void {
-    _ = self;
-    std.Thread.sleep(std.time.ns_per_s * secs);
+    self.io.sleep(.fromSeconds(secs), .awake) catch unreachable; // deal with it later
 }
 
 // === Helpers ===

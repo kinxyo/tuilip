@@ -1,13 +1,13 @@
 const std = @import("std");
+const Init = std.process.Init;
 const tui = @import("tuilip");
 
-pub fn main() !void {
+pub fn main(init: Init) !void {
     // init
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    const io = init.io;
+    const allocator = init.gpa;
 
-    var cv: tui.Canvas = try .init(allocator);
+    var cv: tui.Canvas = try .init(io, allocator);
     defer cv.deinit();
 
     // define
@@ -25,6 +25,10 @@ pub fn main() !void {
             'a' => pos.col -= 1,
             's' => pos.row += 1,
             'd' => pos.col += 1,
+            'k' => pos.row -= 1,
+            'h' => pos.col -= 1,
+            'j' => pos.row += 1,
+            'l' => pos.col += 1,
             else => {},
         }
         try cv.renderFit(pixel, pos, .draw);

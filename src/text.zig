@@ -1,7 +1,7 @@
 //! Text widget definitiion
 const std = @import("std");
 const t = @import("types.zig");
-const io = @import("io.zig");
+const term = @import("terminal.zig");
 
 // Text is defined not as []Cell so it can be defined like this,
 // & be passed around instead of needing allocator and functions,
@@ -9,8 +9,8 @@ const io = @import("io.zig");
 const Text = @This();
 
 value: []const u8,
-bg: io.Bg = .default,
-fg: io.Fg = .default,
+bg: term.Bg = .default,
+fg: term.Fg = .default,
 
 pub fn new(str: []const u8) Text {
     return .{ .value = str };
